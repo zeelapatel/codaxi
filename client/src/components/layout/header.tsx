@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/context/theme-context";
+import Logo from "@/components/shared/logo";
 
 const Header: React.FC = () => {
   const [location] = useLocation();
@@ -13,11 +14,8 @@ const Header: React.FC = () => {
         <div className="flex items-center">
           {/* Logo */}
           <Link href="/">
-            <div className="flex items-center mr-8 cursor-pointer">
-              <span className="material-icons text-[#f50057] mr-2">
-                account_tree
-              </span>
-              <span className="text-xl font-medium text-[var(--app-text)]">Universal Codemap</span>
+            <div className="cursor-pointer">
+              <Logo className="mr-8" />
             </div>
           </Link>
           

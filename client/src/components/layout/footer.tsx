@@ -1,16 +1,14 @@
 import React from "react";
 import { Link } from "wouter";
+import Logo from "@/components/shared/logo";
 
 const Footer: React.FC = () => {
   return (
     <footer className="bg-[var(--app-surface)] mt-12 border-t border-[var(--app-border)]">
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center mb-4 md:mb-0">
-            <span className="material-icons text-[#f50057] mr-2">
-              account_tree
-            </span>
-            <span className="text-xl font-medium text-[var(--app-text)]">Universal Codemap</span>
+          <div className="mb-4 md:mb-0">
+            <Logo />
           </div>
           
           <div className="flex space-x-6">
@@ -30,7 +28,7 @@ const Footer: React.FC = () => {
         
         <div className="mt-6 border-t border-[var(--app-border)] pt-6 flex flex-col md:flex-row justify-between items-center">
           <div className="text-[var(--app-text-secondary)] text-sm mb-4 md:mb-0">
-            &copy; {new Date().getFullYear()} Universal Codemap. All rights reserved.
+            &copy; {new Date().getFullYear()} Cod<span className="text-[#f50057]">a</span>x<span className="text-[#f50057]">i</span>. All rights reserved.
           </div>
           
           <div className="flex space-x-4">
