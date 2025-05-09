@@ -1,4 +1,5 @@
 import { users, type User, type InsertUser, projects, type Project, type InsertProject, documents, type Document, type InsertDocument } from "@shared/schema";
+import { DatabaseStorage } from "./database-storage";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -127,4 +128,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Use database storage implementation instead of in-memory storage
+export const storage = new DatabaseStorage();
