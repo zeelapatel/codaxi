@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertProjectSchema, insertDocumentSchema } from "@shared/schema";
+import { setupAuth } from "./auth";
 
 // GitHub repository URL validation schema
 const githubRepoSchema = z.object({
@@ -17,8 +18,10 @@ const fileUploadSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  // Set up authentication
+  setupAuth(app);
+  
+  // Other API routes
 
   // Get all projects (for a user, but we're not implementing auth for MVP)
   app.get("/api/projects", async (req, res) => {
