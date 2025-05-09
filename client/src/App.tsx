@@ -11,17 +11,21 @@ import AnalysisOverview from "@/pages/analysis-overview";
 import RelationshipVisualization from "@/pages/relationship-visualization";
 import Documentation from "@/pages/documentation";
 import Download from "@/pages/download";
+import AuthPage from "@/pages/auth-page";
 import { ThemeProvider } from "@/context/theme-context";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/upload" component={ProjectUpload} />
-      <Route path="/analysis/:id" component={AnalysisOverview} />
-      <Route path="/visualization/:id" component={RelationshipVisualization} />
-      <Route path="/documentation/:id" component={Documentation} />
-      <Route path="/download/:id" component={Download} />
+      <ProtectedRoute path="/" component={Home} />
+      <ProtectedRoute path="/upload" component={ProjectUpload} />
+      <ProtectedRoute path="/analysis/:id" component={AnalysisOverview} />
+      <ProtectedRoute path="/visualization/:id" component={RelationshipVisualization} />
+      <ProtectedRoute path="/documentation/:id" component={Documentation} />
+      <ProtectedRoute path="/download/:id" component={Download} />
+      <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -31,12 +35,14 @@ function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <MainLayout>
-            <Router />
-          </MainLayout>
-          <Toaster />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <MainLayout>
+              <Router />
+            </MainLayout>
+            <Toaster />
+          </TooltipProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
