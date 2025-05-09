@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "wouter";
 import Logo from "@/components/shared/logo";
+import BrandText from "@/components/shared/brand-text";
 
 const Footer: React.FC = () => {
   return (
@@ -28,7 +29,7 @@ const Footer: React.FC = () => {
         
         <div className="mt-6 border-t border-[var(--app-border)] pt-6 flex flex-col md:flex-row justify-between items-center">
           <div className="text-[var(--app-text-secondary)] text-sm mb-4 md:mb-0">
-            &copy; {new Date().getFullYear()} Cod<span className="text-[#f50057]">a</span>x<span className="text-[#f50057]">i</span>. All rights reserved.
+            &copy; {new Date().getFullYear()} <BrandText />. All rights reserved.
           </div>
           
           <div className="flex space-x-4">
