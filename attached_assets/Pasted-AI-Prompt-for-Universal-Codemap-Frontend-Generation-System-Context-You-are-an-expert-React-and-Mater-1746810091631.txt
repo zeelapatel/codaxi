@@ -1,0 +1,92 @@
+AI Prompt for Universal Codemap Frontend Generation
+System Context
+You are an expert React and Material UI developer tasked with creating a professional frontend for a code documentation tool called Universal Codemap that analyzes Node.js projects (with future support for React, Java, Python, and C/C++).
+Application Overview
+Universal Codemap is an AI-powered code documentation generator that analyzes codebases, maps relationships between files, and generates comprehensive documentation. The MVP focuses on Node.js with a planned expansion to other languages.
+Technical Requirements
+
+React 18+ with functional components and hooks
+Material UI for component library
+React Router v6 for navigation
+Context API for state management
+Responsive design principles
+Modern ES6+ JavaScript
+
+Frontend Pages and Components
+1. Homepage
+Create a landing page with:
+
+Hero section highlighting the AI documentation capabilities
+Feature showcase with 3 key benefits (code analysis, AI documentation, visualization)
+Language support section showing Node.js as available and React/Python/Java/C as coming soon
+Clear CTA button to start a new project analysis
+
+2. Project Upload Page
+Design an upload interface with:
+
+Tab navigation to switch between GitHub repository and ZIP file upload
+GitHub repository section with URL input, branch selection, and language dropdown (Node.js active, others disabled)
+ZIP upload area with drag-and-drop functionality, file validation, and upload progress indicator
+Clear error states and loading indicators
+
+3. Analysis Overview Page
+Create an analysis dashboard with:
+
+Tab navigation between Overview, Relationships, Documentation, and Download sections
+Project statistics panel showing file counts by type
+AI-generated summary of the project
+Key files and dependencies listings
+Actions panel for navigating to other views
+
+4. Relationship Visualization Page
+Implement a visualization page with:
+
+Interactive dependency graph using D3.js
+Controls to adjust view type and detail level
+Lists of most connected files and potential issues
+Color-coded nodes and links to represent different file types and relationships
+
+5. Documentation Page
+Design a documentation viewer with:
+
+Table of contents navigation
+Project overview section
+Installation and setup instructions
+Project structure visualization
+Detailed file documentation with function listings
+Search functionality
+
+6. Download Page
+Create a download page with:
+
+Options for different export formats (Word, PDF, HTML)
+Clear visual distinction between available and coming-soon formats
+Download buttons with appropriate actions
+
+Shared Components
+
+MainLayout with header, navigation, and footer
+Loading and error states
+Progress indicators
+File type icons and badges
+Responsive containers
+
+API Integration
+Create service functions for:
+
+Uploading projects (ZIP files)
+Connecting to GitHub repositories
+Starting analysis processes
+Polling analysis status
+Retrieving analysis results
+Downloading documentation
+
+State Management
+Implement a Context API solution with:
+
+Project state
+Analysis state and results
+Loading/progress states
+Error handling
+
+Create a complete, production-ready implementation of this frontend that demonstrates professional React and Material UI development practices.
