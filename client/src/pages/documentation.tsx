@@ -61,7 +61,7 @@ const Documentation: React.FC = () => {
           </div>
         </div>
         
-        <AnalysisTabs projectId={id} activeTab="documentation" />
+        <AnalysisTabs projectId={id || ""} activeTab="documentation" />
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Table of Contents */}

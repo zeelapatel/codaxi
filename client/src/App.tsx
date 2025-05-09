@@ -11,6 +11,7 @@ import AnalysisOverview from "@/pages/analysis-overview";
 import RelationshipVisualization from "@/pages/relationship-visualization";
 import Documentation from "@/pages/documentation";
 import Download from "@/pages/download";
+import { ThemeProvider } from "@/context/theme-context";
 
 function Router() {
   return (
@@ -28,14 +29,16 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <MainLayout>
-          <Router />
-        </MainLayout>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <MainLayout>
+            <Router />
+          </MainLayout>
+          <Toaster />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

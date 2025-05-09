@@ -1,11 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-
 :root {
+  --radius: 0.5rem;
+  
+  /* Shared colors */
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --destructive: 0 62.8% 30.6%;
+  --secondary-accent: 340 100% 48%;
+  --chart-1: 207 90% 54%;
+  --chart-2: 262 83% 58%;
+  --chart-3: 340 100% 48%;
+  --chart-4: 37 90% 50%;
+  --chart-5: 174 100% 29%;
+}
+
+.dark {
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
   --muted: 240 3.7% 15.9%;
@@ -16,28 +31,47 @@
   --card-foreground: 0 0% 98%;
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
-  --primary: 207 90% 54%;
-  --primary-foreground: 211 100% 99%;
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
   --accent: 240 3.7% 15.9%;
   --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
   --ring: 240 4.9% 83.9%;
-  --radius: 0.5rem;
 
   /* Additional custom colors for codemap application */
-  --dark-bg: 240 10% 7%;
-  --dark-surface: 240 10% 12%;
-  --dark-surface-light: 240 10% 18%;
-  --dark-border: 240 10% 20%;
-  --secondary-accent: 340 100% 48%;
-  --chart-1: 207 90% 54%;
-  --chart-2: 262 83% 58%;
-  --chart-3: 340 100% 48%;
-  --chart-4: 37 90% 50%;
-  --chart-5: 174 100% 29%;
+  --app-bg: #121212;
+  --app-surface: #1e1e1e;
+  --app-surface-light: #2d2d2d;
+  --app-border: #333333;
+  --app-text: #ffffff;
+  --app-text-secondary: #9e9e9e;
+}
+
+.light {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive-foreground: 0 0% 98%;
+  --ring: 240 5.9% 10%;
+
+  /* Additional custom colors for codemap application */
+  --app-bg: #f8f9fa;
+  --app-surface: #ffffff;
+  --app-surface-light: #f1f3f5;
+  --app-border: #e9ecef;
+  --app-text: #212529;
+  --app-text-secondary: #6c757d;
 }
 
 @layer base {
@@ -46,7 +80,9 @@
   }
 
   body {
-    @apply bg-[#121212] text-white font-sans antialiased;
+    @apply font-sans antialiased;
+    background-color: var(--app-bg);
+    color: var(--app-text);
   }
 
   .font-mono {
