@@ -24,19 +24,19 @@ const Header: React.FC = () => {
           {/* Navigation */}
           <nav className="hidden md:flex">
             <Link href="/">
-              <a className={`mx-3 py-2 hover:text-[#f50057] transition-colors ${location === '/' ? 'text-[#f50057]' : 'text-[var(--app-text)]'}`}>
+              <span className={`mx-3 py-2 hover:text-[#f50057] transition-colors cursor-pointer ${location === '/' ? 'text-[#f50057]' : 'text-[var(--app-text)]'}`}>
                 Home
-              </a>
+              </span>
             </Link>
             <Link href="/upload">
-              <a className={`mx-3 py-2 hover:text-[#f50057] transition-colors ${location === '/upload' ? 'text-[#f50057]' : 'text-[var(--app-text)]'}`}>
+              <span className={`mx-3 py-2 hover:text-[#f50057] transition-colors cursor-pointer ${location === '/upload' ? 'text-[#f50057]' : 'text-[var(--app-text)]'}`}>
                 Start Analysis
-              </a>
+              </span>
             </Link>
             <Link href="/documentation/overview">
-              <a className={`mx-3 py-2 hover:text-[#f50057] transition-colors ${location.startsWith('/documentation') ? 'text-[#f50057]' : 'text-[var(--app-text)]'}`}>
+              <span className={`mx-3 py-2 hover:text-[#f50057] transition-colors cursor-pointer ${location.startsWith('/documentation') ? 'text-[#f50057]' : 'text-[var(--app-text)]'}`}>
                 Documentation
-              </a>
+              </span>
             </Link>
           </nav>
         </div>
