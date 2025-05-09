@@ -7,7 +7,7 @@
 
 :root {
   --radius: 0.5rem;
-  
+
   /* Shared colors */
   --primary: 207 90% 54%;
   --primary-foreground: 211 100% 99%;
@@ -98,13 +98,15 @@
   transition: all 0.3s ease;
 }
 
-.github-tab, .zip-tab {
+.github-tab,
+.zip-tab {
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all 0.3s ease;
 }
 
-.github-tab.active, .zip-tab.active {
+.github-tab.active,
+.zip-tab.active {
   border-bottom-color: hsl(var(--secondary-accent));
 }
 
@@ -127,8 +129,13 @@
 }
 
 @keyframes progress {
-  0% { left: -30%; }
-  100% { left: 100%; }
+  0% {
+    left: -30%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
 
 .language-badge {
@@ -147,19 +154,38 @@
   border-radius: 50%;
 }
 
-.language-badge.nodejs::before { background-color: #8bc34a; }
-.language-badge.react::before { background-color: #61dafb; }
-.language-badge.python::before { background-color: #3572A5; }
-.language-badge.java::before { background-color: #b07219; }
-.language-badge.c::before { background-color: #555555; }
+.language-badge.nodejs::before {
+  background-color: #8bc34a;
+}
+
+.language-badge.react::before {
+  background-color: #61dafb;
+}
+
+.language-badge.python::before {
+  background-color: #3572A5;
+}
+
+.language-badge.java::before {
+  background-color: #b07219;
+}
+
+.language-badge.c::before {
+  background-color: #555555;
+}
 
 .fade-in {
   animation: fadeIn 0.5s ease-in-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .graph-node {
