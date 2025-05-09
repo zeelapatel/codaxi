@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+:root {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --ring: 240 4.9% 83.9%;
+  --radius: 0.5rem;
+
+  /* Additional custom colors for codemap application */
+  --dark-bg: 240 10% 7%;
+  --dark-surface: 240 10% 12%;
+  --dark-surface-light: 240 10% 18%;
+  --dark-border: 240 10% 20%;
+  --secondary-accent: 340 100% 48%;
+  --chart-1: 207 90% 54%;
+  --chart-2: 262 83% 58%;
+  --chart-3: 340 100% 48%;
+  --chart-4: 37 90% 50%;
+  --chart-5: 174 100% 29%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-[#121212] text-white font-sans antialiased;
+  }
+
+  .font-mono {
+    font-family: 'Roboto Mono', monospace;
+  }
+}
+
+.tab-indicator {
+  height: 3px;
+  background-color: hsl(var(--secondary-accent));
+  position: absolute;
+  bottom: 0;
+  transition: all 0.3s ease;
+}
+
+.github-tab, .zip-tab {
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.github-tab.active, .zip-tab.active {
+  border-bottom-color: hsl(var(--secondary-accent));
+}
+
+.progress-indicator {
+  width: 100%;
+  height: 4px;
+  background-color: hsl(var(--dark-surface-light));
+  position: relative;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.progress-indicator::after {
+  content: '';
+  position: absolute;
+  height: 100%;
+  width: 30%;
+  background-color: hsl(var(--secondary-accent));
+  animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+
+.language-badge {
+  position: relative;
+  padding-left: 16px;
+}
+
+.language-badge::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.language-badge.nodejs::before { background-color: #8bc34a; }
+.language-badge.react::before { background-color: #61dafb; }
+.language-badge.python::before { background-color: #3572A5; }
+.language-badge.java::before { background-color: #b07219; }
+.language-badge.c::before { background-color: #555555; }
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.graph-node {
+  transition: all 0.3s ease;
+}
+
+.graph-node:hover {
+  filter: brightness(1.2);
+}
+
+/* Prose styling for documentation */
+.prose-custom {
+  @apply text-gray-300;
+}
+
+.prose-custom h2 {
+  @apply text-2xl font-light text-white border-b border-[#333333] pb-2 mb-4;
+}
+
+.prose-custom h3 {
+  @apply text-xl font-medium text-white mb-2;
+}
+
+.prose-custom p {
+  @apply text-gray-300 mb-4;
+}
+
+.prose-custom ul {
+  @apply text-gray-300 mt-2 space-y-1;
+}
+
+.prose-custom pre {
+  @apply bg-[#2d2d2d] rounded-md p-4 my-4 font-mono text-sm whitespace-pre-wrap;
+}
+
+.prose-custom code {
+  @apply font-mono bg-[#2d2d2d] px-1 py-0.5 rounded text-sm;
+}
+
+.prose-custom table {
+  @apply min-w-full bg-[#2d2d2d] rounded-md overflow-hidden;
+}
+
+.prose-custom thead {
+  @apply bg-[#1e1e1e];
+}
+
+.prose-custom th {
+  @apply py-2 px-4 text-left text-gray-300 font-medium;
+}
+
+.prose-custom tbody {
+  @apply divide-y divide-[#333333];
+}
+
+.prose-custom td {
+  @apply py-2 px-4;
+}
