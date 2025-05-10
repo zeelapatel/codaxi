@@ -1,6 +1,5 @@
-import { users, type User, type InsertUser, projects, type Project, type InsertProject, documents, type Document, type InsertDocument } from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { type User, type InsertUser, type Project, type InsertProject, type Document, type InsertDocument } from "@shared/schema";
+import { pool, query } from "./db";
 import { IStorage } from "./storage";
 
 // Database storage implementation
@@ -15,30 +14,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const users = await query('SELECT * FROM users WHERE id = $1', [id]);
+    return users[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    const users = await query('SELECT * FROM users WHERE username = $1', [username]);
+    return users[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
+    const result = await query(
+      'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *',
+      [insertUser.username, insertUser.password]
+    );
+    return result[0];
   }
 
   async getAllProjects(): Promise<Project[]> {
-    return await db.select().from(projects);
+    return await query('SELECT * FROM projects');
   }
 
   async getProject(id: number): Promise<Project | undefined> {
-    const [project] = await db.select().from(projects).where(eq(projects.id, id));
-    return project;
+    const projects = await query('SELECT * FROM projects WHERE id = $1', [id]);
+    return projects[0];
   }
 
   async getTempProject(id: string): Promise<any | undefined> {
@@ -46,15 +45,20 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createProject(insertProject: Omit<InsertProject, "createdAt">): Promise<Project> {
-    const [project] = await db
-      .insert(projects)
-      .values({
-        ...insertProject,
-        repositoryUrl: insertProject.repositoryUrl || null,
-        userId: insertProject.userId || null
-      })
-      .returning();
-    return project;
+    const result = await query(
+      'INSERT INTO projects (name, language, file_count, total_lines, stats, user_id, repository_url, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [
+        insertProject.name, 
+        insertProject.language,
+        insertProject.fileCount,
+        insertProject.totalLines,
+        JSON.stringify(insertProject.stats),
+        insertProject.userId || null,
+        insertProject.repositoryUrl || null,
+        new Date()
+      ]
+    );
+    return result[0];
   }
   
   async createTempProject(project: any): Promise<any> {
@@ -62,13 +66,9 @@ export class DatabaseStorage implements IStorage {
     return project;
   }
   
-  // Document methods
   async getDocumentation(projectId: number): Promise<Document | undefined> {
-    const [document] = await db
-      .select()
-      .from(documents)
-      .where(eq(documents.projectId, projectId));
-    return document;
+    const documents = await query('SELECT * FROM documents WHERE project_id = $1', [projectId]);
+    return documents[0];
   }
   
   async getTempDocumentation(projectId: string): Promise<any | undefined> {
@@ -76,11 +76,17 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createDocumentation(insertDocument: Omit<InsertDocument, "createdAt">): Promise<Document> {
-    const [document] = await db
-      .insert(documents)
-      .values(insertDocument)
-      .returning();
-    return document;
+    const result = await query(
+      'INSERT INTO documents (project_id, title, content, sections, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [
+        insertDocument.projectId,
+        insertDocument.title,
+        insertDocument.content,
+        JSON.stringify(insertDocument.sections),
+        new Date()
+      ]
+    );
+    return result[0];
   }
   
   async createTempDocumentation(document: any): Promise<any> {

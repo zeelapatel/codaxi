@@ -9,6 +9,7 @@ import { nanoid } from "nanoid";
 const viteLogger = createLogger();
 
 export function log(message: string, source = "express") {
+  
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -20,15 +21,19 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  const clientRoot = path.resolve(process.cwd(), "client");
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
     allowedHosts: true,
+    root: clientRoot
   };
 
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
+    root: clientRoot,
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
@@ -46,10 +51,9 @@ export async function setupVite(app: Express, server: Server) {
 
     try {
       const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
+        process.cwd(),
         "client",
-        "index.html",
+        "index.html"
       );
 
       // always reload the index.html file from disk incase it changes
@@ -68,7 +72,7 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = path.resolve(process.cwd(), "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(

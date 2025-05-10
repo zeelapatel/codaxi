@@ -28,30 +28,33 @@ const Home: React.FC = () => {
           </div>
           <div className="md:w-1/2 flex justify-center">
             {/* Conceptual illustration of code visualization analysis */}
-            <div className="relative w-full max-w-md h-64 md:h-80 bg-[#1e1e1e] rounded-xl shadow-lg overflow-hidden">
-              <div className="absolute inset-0 opacity-20 flex items-center justify-center">
+            <div className="relative w-full max-w-md h-64 md:h-80 bg-gradient-to-b from-[#1e1e1e] to-[#121212] rounded-xl shadow-lg overflow-hidden">
+              <div className="absolute inset-0 opacity-30 flex items-center justify-center">
                 <div className="w-full h-full flex items-center justify-center">
                   <svg viewBox="0 0 800 600" width="100%" height="100%" className="text-primary-300">
                     <g>
-                      <circle cx="400" cy="300" r="50" fill="#3f51b5" className="graph-node" />
-                      <circle cx="250" cy="200" r="30" fill="#5c6bc0" className="graph-node" />
-                      <circle cx="550" cy="200" r="30" fill="#5c6bc0" className="graph-node" />
-                      <circle cx="200" cy="400" r="25" fill="#7986cb" className="graph-node" />
-                      <circle cx="350" cy="450" r="25" fill="#7986cb" className="graph-node" />
-                      <circle cx="500" cy="380" r="25" fill="#7986cb" className="graph-node" />
-                      <circle cx="600" cy="350" r="25" fill="#7986cb" className="graph-node" />
-                      
-                      <line x1="400" y1="300" x2="250" y2="200" stroke="#f50057" strokeWidth="2" strokeOpacity="0.6" />
-                      <line x1="400" y1="300" x2="550" y2="200" stroke="#f50057" strokeWidth="2" strokeOpacity="0.6" />
-                      <line x1="400" y1="300" x2="200" y2="400" stroke="#f50057" strokeWidth="2" strokeOpacity="0.6" />
-                      <line x1="400" y1="300" x2="350" y2="450" stroke="#f50057" strokeWidth="2" strokeOpacity="0.6" />
-                      <line x1="400" y1="300" x2="500" y2="380" stroke="#f50057" strokeWidth="2" strokeOpacity="0.6" />
-                      <line x1="400" y1="300" x2="600" y2="350" stroke="#f50057" strokeWidth="2" strokeOpacity="0.6" />
-                      <line x1="250" y1="200" x2="200" y2="400" stroke="#3f51b5" strokeWidth="1" strokeOpacity="0.4" />
-                      <line x1="550" y1="200" x2="600" y2="350" stroke="#3f51b5" strokeWidth="1" strokeOpacity="0.4" />
-                      <line x1="200" y1="400" x2="350" y2="450" stroke="#3f51b5" strokeWidth="1" strokeOpacity="0.4" />
-                      <line x1="350" y1="450" x2="500" y2="380" stroke="#3f51b5" strokeWidth="1" strokeOpacity="0.4" />
-                      <line x1="500" y1="380" x2="600" y2="350" stroke="#3f51b5" strokeWidth="1" strokeOpacity="0.4" />
+                      {/* Central Node */}
+                      <circle cx="400" cy="300" r="50" fill="#ff5722" className="graph-node" />
+                      {/* Surrounding Nodes */}
+                      <circle cx="250" cy="200" r="30" fill="#ff9800" className="graph-node" />
+                      <circle cx="550" cy="200" r="30" fill="#ffc107" className="graph-node" />
+                      <circle cx="200" cy="400" r="25" fill="#8bc34a" className="graph-node" />
+                      <circle cx="350" cy="450" r="25" fill="#03a9f4" className="graph-node" />
+                      <circle cx="500" cy="380" r="25" fill="#673ab7" className="graph-node" />
+                      <circle cx="600" cy="350" r="25" fill="#e91e63" className="graph-node" />
+
+                      {/* Connecting Lines */}
+                      <line x1="400" y1="300" x2="250" y2="200" stroke="#ff5722" strokeWidth="2" strokeOpacity="0.8" />
+                      <line x1="400" y1="300" x2="550" y2="200" stroke="#ff9800" strokeWidth="2" strokeOpacity="0.8" />
+                      <line x1="400" y1="300" x2="200" y2="400" stroke="#8bc34a" strokeWidth="2" strokeOpacity="0.8" />
+                      <line x1="400" y1="300" x2="350" y2="450" stroke="#03a9f4" strokeWidth="2" strokeOpacity="0.8" />
+                      <line x1="400" y1="300" x2="500" y2="380" stroke="#673ab7" strokeWidth="2" strokeOpacity="0.8" />
+                      <line x1="400" y1="300" x2="600" y2="350" stroke="#e91e63" strokeWidth="2" strokeOpacity="0.8" />
+                      <line x1="250" y1="200" x2="200" y2="400" stroke="#ff9800" strokeWidth="1" strokeOpacity="0.5" />
+                      <line x1="550" y1="200" x2="600" y2="350" stroke="#ffc107" strokeWidth="1" strokeOpacity="0.5" />
+                      <line x1="200" y1="400" x2="350" y2="450" stroke="#8bc34a" strokeWidth="1" strokeOpacity="0.5" />
+                      <line x1="350" y1="450" x2="500" y2="380" stroke="#03a9f4" strokeWidth="1" strokeOpacity="0.5" />
+                      <line x1="500" y1="380" x2="600" y2="350" stroke="#673ab7" strokeWidth="1" strokeOpacity="0.5" />
                     </g>
                   </svg>
                 </div>
@@ -59,14 +62,14 @@ const Home: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-b from-[#2d2d2d] to-transparent opacity-50"></div>
               <div className="absolute top-0 left-0 right-0 p-4">
                 <div className="flex items-center text-white">
-                  <span className="material-icons mr-2 text-[#f50057]">data_object</span>
+                  <span className="material-icons mr-2 text-[#ff5722]">data_object</span>
                   <span className="font-mono text-sm">Project Analysis</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Feature Showcase */}
         <div className="mb-16">
           <h2 className="text-3xl font-light text-white text-center mb-10">Key Features</h2>
@@ -81,7 +84,7 @@ const Home: React.FC = () => {
                 Automatically analyze project structure, identify dependencies, and map file relationships with advanced algorithms.
               </p>
             </div>
-            
+
             {/* Feature 2 */}
             <div className="bg-[#1e1e1e] rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
               <div className="text-[#f50057] mb-4">
@@ -92,7 +95,7 @@ const Home: React.FC = () => {
                 Generate human-readable documentation with AI that explains code structure, purpose, and functionality.
               </p>
             </div>
-            
+
             {/* Feature 3 */}
             <div className="bg-[#1e1e1e] rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
               <div className="text-[#f50057] mb-4">
@@ -105,7 +108,7 @@ const Home: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Language Support */}
         <div>
           <h2 className="text-3xl font-light text-white text-center mb-10">Language Support</h2>
@@ -119,7 +122,7 @@ const Home: React.FC = () => {
                 <h4 className="text-white font-medium">Node.js</h4>
                 <span className="inline-block mt-2 px-2 py-1 bg-[#4caf50] bg-opacity-20 text-[#4caf50] text-xs rounded-full">Available</span>
               </div>
-              
+
               {/* React */}
               <div className="p-4 bg-[#2d2d2d] rounded-lg text-center">
                 <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
@@ -128,7 +131,7 @@ const Home: React.FC = () => {
                 <h4 className="text-white font-medium">React</h4>
                 <span className="inline-block mt-2 px-2 py-1 bg-[#2196f3] bg-opacity-20 text-[#2196f3] text-xs rounded-full">Coming Soon</span>
               </div>
-              
+
               {/* Python */}
               <div className="p-4 bg-[#2d2d2d] rounded-lg text-center">
                 <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
@@ -137,7 +140,7 @@ const Home: React.FC = () => {
                 <h4 className="text-white font-medium">Python</h4>
                 <span className="inline-block mt-2 px-2 py-1 bg-[#2196f3] bg-opacity-20 text-[#2196f3] text-xs rounded-full">Coming Soon</span>
               </div>
-              
+
               {/* Java */}
               <div className="p-4 bg-[#2d2d2d] rounded-lg text-center">
                 <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
@@ -146,7 +149,7 @@ const Home: React.FC = () => {
                 <h4 className="text-white font-medium">Java</h4>
                 <span className="inline-block mt-2 px-2 py-1 bg-[#2196f3] bg-opacity-20 text-[#2196f3] text-xs rounded-full">Coming Soon</span>
               </div>
-              
+
               {/* C/C++ */}
               <div className="p-4 bg-[#2d2d2d] rounded-lg text-center">
                 <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">

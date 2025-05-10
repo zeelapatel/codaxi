@@ -13,7 +13,7 @@ const PostgresSessionStore = connectPg(session);
 
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User extends SelectUser { }
   }
 }
 
@@ -37,9 +37,9 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || "codaxi-development-secret",
     resave: false,
     saveUninitialized: false,
-    store: new PostgresSessionStore({ 
-      pool, 
-      createTableIfMissing: true 
+    store: new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true
     }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
@@ -91,30 +91,30 @@ export function setupAuth(app: Express) {
 
       req.login(user, (err) => {
         if (err) return next(err);
-        res.status(201).json({ 
-          id: user.id, 
-          username: user.username 
+        res.status(201).json({
+          id: user.id,
+          username: user.username
         });
       });
     } catch (error) {
+      console.error("Error during registration:", error); // Add this line
       res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to create user"
       });
     }
   });
-
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err: Error, user: SelectUser, info: any) => {
       if (err) return next(err);
       if (!user) {
         return res.status(401).json({ message: info.message || "Authentication failed" });
       }
-      
+
       req.login(user, (err) => {
         if (err) return next(err);
-        res.status(200).json({ 
-          id: user.id, 
-          username: user.username 
+        res.status(200).json({
+          id: user.id,
+          username: user.username
         });
       });
     })(req, res, next);
@@ -131,9 +131,9 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    res.json({ 
-      id: req.user.id, 
-      username: req.user.username 
+    res.json({
+      id: req.user.id,
+      username: req.user.username
     });
   });
 }

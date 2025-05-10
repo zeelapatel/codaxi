@@ -49,7 +49,7 @@ const ProjectUpload: React.FC = () => {
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    
+
     const droppedFile = event.dataTransfer.files[0];
     if (droppedFile && droppedFile.type === "application/zip") {
       setFile(droppedFile);
@@ -70,7 +70,7 @@ const ProjectUpload: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    
+
     if (isGitHubTab) {
       if (!validateGitHubUrl(repoUrl)) {
         toast({
@@ -84,7 +84,7 @@ const ProjectUpload: React.FC = () => {
       try {
         setIsUploading(true);
         dispatch({ type: 'START_ANALYSIS', payload: { repositoryUrl: repoUrl, language } });
-        
+
         // Simulate progress updates
         const progressInterval = setInterval(() => {
           setUploadProgress(prev => {
@@ -133,7 +133,7 @@ const ProjectUpload: React.FC = () => {
       try {
         setIsUploading(true);
         dispatch({ type: 'START_ANALYSIS', payload: { zipFile: file, language } });
-        
+
         // Create FormData for file upload
         const formData = new FormData();
         formData.append('file', file);
@@ -155,10 +155,10 @@ const ProjectUpload: React.FC = () => {
         // For now, simulate a successful response
         setTimeout(() => {
           clearInterval(progressInterval);
-          dispatch({ 
-            type: 'ANALYSIS_COMPLETE', 
-            payload: { 
-              id: 'zip-' + Date.now(), 
+          dispatch({
+            type: 'ANALYSIS_COMPLETE',
+            payload: {
+              id: 'zip-' + Date.now(),
               name: file.name.replace('.zip', ''),
               language,
               fileCount: 64,
@@ -169,7 +169,7 @@ const ProjectUpload: React.FC = () => {
                 mdFiles: 6
               },
               analysisDate: new Date().toISOString()
-            } 
+            }
           });
           setLocation(`/analysis/zip-${Date.now()}`);
         }, 3000);
@@ -191,18 +191,18 @@ const ProjectUpload: React.FC = () => {
     <section className="py-12 bg-[#121212] fade-in">
       <div className="container mx-auto px-4">
         <h1 className="text-3xl font-light text-white mb-8">Start a New Project</h1>
-        
+
         <div className="bg-[#1e1e1e] rounded-xl shadow-md overflow-hidden">
           {/* Upload Tabs */}
           <div className="flex border-b border-[#333333]">
-            <div 
+            <div
               className={`px-6 py-4 font-medium flex items-center cursor-pointer ${isGitHubTab ? 'github-tab active text-white' : 'github-tab text-gray-400'}`}
               onClick={handleGitHubTabClick}
             >
               <span className="material-icons mr-2">code</span>
               GitHub Repository
             </div>
-            <div 
+            <div
               className={`px-6 py-4 font-medium flex items-center cursor-pointer ${!isGitHubTab ? 'zip-tab active text-white' : 'zip-tab text-gray-400'}`}
               onClick={handleZipTabClick}
             >
@@ -210,7 +210,7 @@ const ProjectUpload: React.FC = () => {
               ZIP Upload
             </div>
           </div>
-          
+
           {/* GitHub Repository Form */}
           {isGitHubTab ? (
             <div className="p-6">
@@ -226,13 +226,13 @@ const ProjectUpload: React.FC = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>
                     <label className="block text-gray-300 mb-2" htmlFor="branch">Branch</label>
                     <Select value={branch} onValueChange={setBranch}>
-                      <SelectTrigger 
-                        id="branch" 
+                      <SelectTrigger
+                        id="branch"
                         className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
                       >
                         <SelectValue placeholder="Select branch" />
@@ -244,12 +244,12 @@ const ProjectUpload: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-gray-300 mb-2" htmlFor="language">Language</label>
                     <Select value={language} onValueChange={setLanguage}>
-                      <SelectTrigger 
-                        id="language" 
+                      <SelectTrigger
+                        id="language"
                         className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
                       >
                         <SelectValue placeholder="Select language" />
@@ -264,11 +264,22 @@ const ProjectUpload: React.FC = () => {
                     </Select>
                   </div>
                 </div>
-                
+                <div className="mb-6">
+                  <label htmlFor="projectDescription" className="block text-gray-300 mb-2">
+                    Write a short description of your project for AI:
+                  </label>
+                  <textarea
+                    id="projectDescription"
+                    className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
+                    placeholder="Enter a brief description of your project..."
+                    rows={4}
+                    required
+                  />
+                </div>
                 {isUploading && (
                   <div className="mb-4">
                     <div className="h-1 w-full bg-[#2d2d2d] rounded-full">
-                      <div 
+                      <div
                         className="h-1 bg-[#f50057] rounded-full transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       />
@@ -276,8 +287,9 @@ const ProjectUpload: React.FC = () => {
                     <p className="text-sm text-gray-400 mt-2">Analyzing repository... {uploadProgress}%</p>
                   </div>
                 )}
-                
+
                 <div className="flex justify-end">
+
                   <Button
                     type="submit"
                     className="bg-[#f50057] text-white px-6 py-3 rounded-md font-medium hover:bg-opacity-90 transition-colors flex items-center"
@@ -291,43 +303,31 @@ const ProjectUpload: React.FC = () => {
             </div>
           ) : (
             <div className="p-6">
-              <div 
-                className="border-2 border-dashed border-[#333333] rounded-xl p-8 text-center cursor-pointer"
+              <div
+                className="border-2 border-dashed border-[#333333] rounded-xl p-4 text-center cursor-pointer h-32 flex flex-col justify-center items-center"
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
               >
-                <span className="material-icons text-4xl text-gray-400 mb-4">upload_file</span>
-                <h3 className="text-xl font-medium text-white mb-2">Drag & Drop Your Project ZIP</h3>
-                <p className="text-gray-300 mb-6">
-                  Or click to browse your files
-                </p>
-                <input 
-                  type="file" 
-                  id="fileUpload" 
+                <span className="material-icons text-3xl text-gray-400 mb-2">upload_file</span>
+                <h3 className="text-lg font-medium text-white mb-1">Drag & Drop Your Project ZIP</h3>
+                <p className="text-sm text-gray-300">Or click to browse your files</p>
+                <input
+                  type="file"
+                  id="fileUpload"
                   ref={fileInputRef}
-                  className="hidden" 
+                  className="hidden"
                   accept=".zip"
                   onChange={handleFileChange}
                 />
-                <Button 
-                  className="bg-primary-600 text-white px-6 py-3 rounded-md font-medium hover:bg-primary-700 transition-colors mx-auto"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Select ZIP File
-                </Button>
-                <p className="mt-4 text-sm text-gray-400">
-                  Maximum file size: 100MB
-                </p>
               </div>
-              
               {file && (
                 <div className="mt-4 p-4 bg-[#2d2d2d] rounded-lg">
                   <div className="flex items-center">
                     <span className="material-icons text-[#4caf50] mr-2">check_circle</span>
                     <span className="text-white">{file.name}</span>
                     <span className="ml-2 text-sm text-gray-400">({Math.round(file.size / 1024)} KB)</span>
-                    <button 
+                    <button
                       className="ml-auto text-gray-400 hover:text-white"
                       onClick={() => setFile(null)}
                     >
@@ -336,11 +336,11 @@ const ProjectUpload: React.FC = () => {
                   </div>
                 </div>
               )}
-              
+
               {isUploading && (
                 <div className="mt-4">
                   <div className="h-1 w-full bg-[#2d2d2d] rounded-full">
-                    <div 
+                    <div
                       className="h-1 bg-[#f50057] rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
@@ -348,12 +348,23 @@ const ProjectUpload: React.FC = () => {
                   <p className="text-sm text-gray-400 mt-2">Uploading and analyzing... {uploadProgress}%</p>
                 </div>
               )}
-              
+              <div className="mb-6 my-2">
+                <label htmlFor="projectDescription" className="block text-gray-300 mb-2">
+                  Write a short description of your project for AI:
+                </label>
+                <textarea
+                  id="projectDescription"
+                  className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
+                  placeholder="Enter a brief description of your project..."
+                  rows={4}
+                  required
+                />
+              </div>
               <div className="flex justify-end mt-6">
                 <label className="mr-4">
                   <Select value={language} onValueChange={setLanguage}>
-                    <SelectTrigger 
-                      id="language-zip" 
+                    <SelectTrigger
+                      id="language-zip"
                       className="w-60 bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
                     >
                       <SelectValue placeholder="Select language" />
@@ -367,6 +378,7 @@ const ProjectUpload: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </label>
+
                 <Button
                   onClick={handleSubmit}
                   className="bg-[#f50057] text-white px-6 py-3 rounded-md font-medium hover:bg-opacity-90 transition-colors flex items-center"
@@ -379,6 +391,7 @@ const ProjectUpload: React.FC = () => {
             </div>
           )}
         </div>
+
       </div>
     </section>
   );
