@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/context/project-context";
 import { apiRequest } from "@/lib/queryClient";
+
+interface GitHubRepo {
+  id: number;
+  name: string;
+  description: string;
+  url: string;
+  defaultBranch: string;
+  private: boolean;
+  updatedAt: string;
+}
 
 const ProjectUpload: React.FC = () => {
   const [isGitHubTab, setIsGitHubTab] = useState(true);
@@ -19,6 +29,29 @@ const ProjectUpload: React.FC = () => {
   const { dispatch } = useProject();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
+  const [isLoadingRepos, setIsLoadingRepos] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
+
+  // Fetch repositories when component mounts
+  useEffect(() => {
+    const fetchRepositories = async () => {
+      try {
+        setIsLoadingRepos(true);
+        const response = await apiRequest('GET', '/api/github/repositories');
+        if (response.ok) {
+          const repos = await response.json();
+          setRepositories(repos);
+        }
+      } catch (error) {
+        console.error('Failed to fetch repositories:', error);
+      } finally {
+        setIsLoadingRepos(false);
+      }
+    };
+
+    fetchRepositories();
+  }, []);
 
   const handleGitHubTabClick = () => {
     setIsGitHubTab(true);
@@ -26,6 +59,22 @@ const ProjectUpload: React.FC = () => {
 
   const handleZipTabClick = () => {
     setIsGitHubTab(false);
+  };
+
+  const handleConnectGitHub = async () => {
+    try {
+      const response = await apiRequest('GET', '/api/github/authorize');
+      if (response.ok) {
+        const { authUrl } = await response.json();
+        window.location.href = authUrl;
+      }
+    } catch (error) {
+      toast({
+        title: "GitHub Connection Failed",
+        description: "Could not connect to GitHub. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,6 +236,12 @@ const ProjectUpload: React.FC = () => {
     }
   };
 
+  const handleRepoSelect = (repo: GitHubRepo) => {
+    setSelectedRepo(repo);
+    setRepoUrl(repo.url);
+    setBranch(repo.defaultBranch);
+  };
+
   return (
     <section className="py-12 bg-[#121212] fade-in">
       <div className="container mx-auto px-4">
@@ -202,6 +257,13 @@ const ProjectUpload: React.FC = () => {
               <span className="material-icons mr-2">code</span>
               GitHub Repository
             </div>
+            <button 
+              className="ml-auto px-6 py-4 text-[#f50057] hover:text-[#ff1f6d] transition-colors flex items-center"
+              onClick={handleConnectGitHub}
+            >
+              <span className="material-icons mr-2">link</span>
+              Connect GitHub
+            </button>
             <div
               className={`px-6 py-4 font-medium flex items-center cursor-pointer ${!isGitHubTab ? 'zip-tab active text-white' : 'zip-tab text-gray-400'}`}
               onClick={handleZipTabClick}
@@ -215,17 +277,49 @@ const ProjectUpload: React.FC = () => {
           {isGitHubTab ? (
             <div className="p-6">
               <form onSubmit={handleSubmit}>
-                <div className="mb-6">
-                  <label className="block text-gray-300 mb-2" htmlFor="repoUrl">Repository URL</label>
-                  <Input
-                    id="repoUrl"
-                    value={repoUrl}
-                    onChange={(e) => setRepoUrl(e.target.value)}
-                    placeholder="https://github.com/username/repository"
-                    className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
-                    required
-                  />
-                </div>
+                {repositories.length > 0 ? (
+                  <div className="mb-6">
+                    <label className="block text-gray-300 mb-2">Select Repository</label>
+                    <div className="grid gap-4">
+                      {repositories.map(repo => (
+                        <div
+                          key={repo.id}
+                          className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                            selectedRepo?.id === repo.id
+                              ? 'border-[#f50057] bg-[#2d2d2d]'
+                              : 'border-[#333333] hover:border-[#f50057]'
+                          }`}
+                          onClick={() => handleRepoSelect(repo)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-white font-medium">{repo.name}</h3>
+                            {repo.private && (
+                              <span className="text-xs bg-[#333333] text-gray-300 px-2 py-1 rounded">Private</span>
+                            )}
+                          </div>
+                          {repo.description && (
+                            <p className="text-gray-400 text-sm mt-1">{repo.description}</p>
+                          )}
+                          <div className="text-xs text-gray-500 mt-2">
+                            Default branch: {repo.defaultBranch}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-6">
+                    <label className="block text-gray-300 mb-2" htmlFor="repoUrl">Repository URL</label>
+                    <Input
+                      id="repoUrl"
+                      value={repoUrl}
+                      onChange={(e) => setRepoUrl(e.target.value)}
+                      placeholder="https://github.com/username/repository"
+                      className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>

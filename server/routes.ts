@@ -4,6 +4,11 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { insertProjectSchema, insertDocumentSchema } from "@shared/schema";
 import { setupAuth } from "./auth";
+import axios from 'axios';
+
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const GITHUB_REDIRECT_URI = 'http://localhost:5000/api/github/callback';
 
 // GitHub repository URL validation schema
 const githubRepoSchema = z.object({
@@ -20,7 +25,94 @@ const fileUploadSchema = z.object({
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   setupAuth(app);
-  
+
+  // GitHub OAuth routes
+  app.get('/api/github/authorize', (req, res) => {
+    if (!GITHUB_CLIENT_ID) {
+      return res.status(500).json({ message: 'GitHub client ID not configured' });
+    }
+
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&scope=repo&redirect_uri=${GITHUB_REDIRECT_URI}`;
+    res.json({ authUrl });
+  });
+
+  // GitHub OAuth callback
+  app.get('/api/github/callback', async (req, res) => {
+    const { code } = req.query;
+
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ message: 'Invalid authorization code' });
+    }
+
+    try {
+      // Exchange code for access token
+      const tokenResponse = await axios.post('https://github.com/login/oauth/access_token', {
+        client_id: GITHUB_CLIENT_ID,
+        client_secret: GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: GITHUB_REDIRECT_URI
+      }, {
+        headers: {
+          Accept: 'application/json'
+        }
+      });
+
+      const { access_token } = tokenResponse.data;
+
+      if (!access_token) {
+        return res.status(400).json({ message: 'Failed to get access token' });
+      }
+
+      // Store token in session
+      if (req.session) {
+        req.session.githubToken = access_token;
+      }
+
+      // Redirect to project upload page
+      res.redirect('/upload');
+    } catch (error) {
+      console.error('GitHub OAuth error:', error);
+      res.status(500).json({ message: 'Failed to complete GitHub authentication' });
+    }
+  });
+
+  // Get user's GitHub repositories
+  app.get('/api/github/repositories', async (req, res) => {
+    const githubToken = req.session?.githubToken;
+
+    if (!githubToken) {
+      return res.status(401).json({ message: 'GitHub authentication required' });
+    }
+
+    try {
+      const reposResponse = await axios.get('https://api.github.com/user/repos', {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json'
+        },
+        params: {
+          sort: 'updated',
+          per_page: 100
+        }
+      });
+
+      const repositories = reposResponse.data.map((repo: any) => ({
+        id: repo.id,
+        name: repo.full_name,
+        description: repo.description,
+        url: repo.html_url,
+        defaultBranch: repo.default_branch,
+        private: repo.private,
+        updatedAt: repo.updated_at
+      }));
+
+      res.json(repositories);
+    } catch (error) {
+      console.error('GitHub API error:', error);
+      res.status(500).json({ message: 'Failed to fetch repositories' });
+    }
+  });
+
   // Other API routes
 
   // Get all projects (for a user, but we're not implementing auth for MVP)
@@ -39,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/projects/:id", async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-      
+
       // Handle string IDs (for mock ZIP uploads)
       if (isNaN(projectId) && req.params.id.startsWith('zip-')) {
         // This is a temporary project from a ZIP upload
@@ -49,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return res.json(project);
       }
-      
+
       const project = await storage.getProject(projectId);
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
@@ -67,14 +159,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validation = githubRepoSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid request data", 
-          errors: validation.error.flatten() 
+        return res.status(400).json({
+          message: "Invalid request data",
+          errors: validation.error.flatten()
         });
       }
 
       const { repositoryUrl, branch, language } = validation.data;
-      
+
       // In a real implementation, we would clone the repository and analyze it
       // For the MVP, we'll return a sample project
       const projectData = {
@@ -107,17 +199,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For the MVP, we'll simulate a successful upload
       const validation = fileUploadSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({ 
-          message: "Invalid request data", 
-          errors: validation.error.flatten() 
+        return res.status(400).json({
+          message: "Invalid request data",
+          errors: validation.error.flatten()
         });
       }
 
       const { language } = validation.data;
-      
+
       // Generate a unique ID for this temporary project
       const tempId = `zip-${Date.now()}`;
-      
+
       // Store in temp storage
       const project = await storage.createTempProject({
         id: tempId,
@@ -132,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         analysisDate: new Date().toISOString()
       });
-      
+
       res.status(201).json(project);
     } catch (error) {
       res.status(500).json({
@@ -145,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/projects/:id/graph", async (req, res) => {
     try {
       const projectId = req.params.id;
-      
+
       // In a real implementation, we would generate this from actual analysis
       // For the MVP, we'll return sample graph data
       const graphData = {
@@ -188,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { source: "middleware/error.js", target: "controllers/order.js", value: 1 },
         ]
       };
-      
+
       res.json(graphData);
     } catch (error) {
       res.status(500).json({
@@ -201,18 +293,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/projects/:id/documentation", async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-      
+
       // In a real implementation, we would generate this from actual analysis
       // For the MVP, we'll check if we have documentation for this project
       let document;
-      
+
       if (isNaN(projectId) && req.params.id.startsWith('zip-')) {
         // Handle temporary projects
         document = await storage.getTempDocumentation(req.params.id);
       } else {
         document = await storage.getDocumentation(projectId);
       }
-      
+
       if (!document) {
         // Create a default documentation
         const documentData = {
@@ -242,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           ]
         };
-        
+
         if (isNaN(projectId) && req.params.id.startsWith('zip-')) {
           // Handle temporary projects
           document = await storage.createTempDocumentation(documentData);
@@ -250,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           document = await storage.createDocumentation(documentData);
         }
       }
-      
+
       res.json(document);
     } catch (error) {
       res.status(500).json({
@@ -264,17 +356,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projectId = req.params.id;
       const format = req.query.format as string || 'html';
-      
+
       // Validate format
       if (!['docx', 'pdf', 'html'].includes(format)) {
         return res.status(400).json({ message: "Invalid format specified" });
       }
-      
+
       // In a real implementation, we would generate the file in the requested format
       // For the MVP, we'll just return a simple text file
       let contentType = 'text/html';
       let content = '<html><body><h1>Project Documentation</h1><p>This is a sample documentation file.</p></body></html>';
-      
+
       switch (format) {
         case 'docx':
           contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -287,7 +379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content = 'This would be a PDF file in a real implementation';
           break;
       }
-      
+
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `attachment; filename=documentation_${projectId}.${format}`);
       res.send(content);
