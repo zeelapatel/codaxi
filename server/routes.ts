@@ -5,6 +5,7 @@ import { z } from "zod";
 import { insertProjectSchema, insertDocumentSchema } from "@shared/schema";
 import { setupAuth } from "./auth";
 import axios from 'axios';
+import { RepositoryAnalyzer } from './services/repository-analyzer';
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
@@ -139,6 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!project) {
           return res.status(404).json({ message: "Project not found" });
         }
+        console.log(project);
         return res.json(project);
       }
 
@@ -166,26 +168,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { repositoryUrl, branch, language } = validation.data;
+      
+      console.log('Starting GitHub repository analysis:', repositoryUrl);
+      const analyzer = new RepositoryAnalyzer();
+      const analysis = await analyzer.analyze(repositoryUrl, branch);
+      console.log('Analysis completed:', JSON.stringify(analysis, null, 2));
 
-      // In a real implementation, we would clone the repository and analyze it
-      // For the MVP, we'll return a sample project
       const projectData = {
         name: repositoryUrl.split("/").pop()?.replace(".git", "") || "GitHub Project",
         language,
-        repositoryUrl,
-        fileCount: 64,
-        totalLines: 9842,
-        stats: {
-          jsFiles: 48,
-          jsonFiles: 10,
-          mdFiles: 6
-        },
-        userId: null
+        repository_url: repositoryUrl,
+        file_count: analysis.fileCount || 0,
+        total_lines: analysis.totalLines || 0,
+        stats: analysis.stats || { jsFiles: 0, jsonFiles: 0, mdFiles: 0 },
+        main_files: analysis.mainFiles || [],
+        dependencies: analysis.dependencies || [],
+        user_id: req.user?.id || null
       };
+      console.log('Project data to save:', JSON.stringify(projectData, null, 2));
 
       const project = await storage.createProject(projectData);
+      console.log('Saved project:', JSON.stringify(project, null, 2));
+      
       res.status(201).json(project);
     } catch (error) {
+      console.error('Error analyzing repository:', error);
       res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to analyze repository"
       });

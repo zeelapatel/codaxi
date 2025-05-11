@@ -63,7 +63,7 @@ const AnalysisOverview: React.FC = () => {
           </div>
         </div>
         
-        <AnalysisTabs projectId={id} activeTab="overview" />
+        <AnalysisTabs projectId={id || ''} activeTab="overview" />
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Project Stats */}
@@ -73,28 +73,28 @@ const AnalysisOverview: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center pb-2 border-b border-[#333333]">
                 <span className="text-gray-300">Total Files</span>
-                <span className="text-white font-medium">{project.fileCount || 64}</span>
+                <span className="text-white font-medium">{project.file_count || 0}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-[#333333]">
                 <span className="text-gray-300">JavaScript Files</span>
-                <span className="text-white font-medium">{project.stats?.jsFiles || 48}</span>
+                <span className="text-white font-medium">{project.stats?.jsFiles || 0}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-[#333333]">
                 <span className="text-gray-300">JSON Files</span>
-                <span className="text-white font-medium">{project.stats?.jsonFiles || 10}</span>
+                <span className="text-white font-medium">{project.stats?.jsonFiles || 0}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-[#333333]">
                 <span className="text-gray-300">Markdown Files</span>
-                <span className="text-white font-medium">{project.stats?.mdFiles || 6}</span>
+                <span className="text-white font-medium">{project.stats?.mdFiles || 0}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-[#333333]">
                 <span className="text-gray-300">Total Lines of Code</span>
-                <span className="text-white font-medium">{project.totalLines?.toLocaleString() || '9,842'}</span>
+                <span className="text-white font-medium">{(project.total_lines || 0).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center pb-2">
+              <div className="flex justify-between items-center">
                 <span className="text-gray-300">Analysis Date</span>
                 <span className="text-white font-medium">
-                  {new Date(project.analysisDate || Date.now()).toLocaleDateString()}
+                  {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'Not analyzed yet'}
                 </span>
               </div>
             </div>
@@ -119,40 +119,28 @@ const AnalysisOverview: React.FC = () => {
             <div className="mt-6">
               <h3 className="text-lg font-medium text-white mb-3">Key Files</h3>
               <ul className="space-y-2">
-                <li className="flex items-center text-gray-300">
-                  <span className="material-icons text-[#ec407a] mr-2">javascript</span>
-                  <span className="font-mono text-sm">app.js</span>
-                  <span className="ml-2 text-xs text-gray-400">- Main application entry point</span>
-                </li>
-                <li className="flex items-center text-gray-300">
-                  <span className="material-icons text-[#ec407a] mr-2">javascript</span>
-                  <span className="font-mono text-sm">config/database.js</span>
-                  <span className="ml-2 text-xs text-gray-400">- Database connection setup</span>
-                </li>
-                <li className="flex items-center text-gray-300">
-                  <span className="material-icons text-[#ec407a] mr-2">javascript</span>
-                  <span className="font-mono text-sm">middleware/auth.js</span>
-                  <span className="ml-2 text-xs text-gray-400">- Authentication middleware</span>
-                </li>
-                <li className="flex items-center text-gray-300">
-                  <span className="material-icons text-[#ec407a] mr-2">javascript</span>
-                  <span className="font-mono text-sm">controllers/userController.js</span>
-                  <span className="ml-2 text-xs text-gray-400">- User management logic</span>
-                </li>
+                {project.main_files.map((file, index) => (
+                  <li key={index} className="flex items-center text-gray-300">
+                    <span className="material-icons text-[#ec407a] mr-2">
+                      {file.path.endsWith('.js') || file.path.endsWith('.ts') ? 'javascript' :
+                       file.path.endsWith('.json') ? 'data_object' :
+                       file.path.endsWith('.md') ? 'description' : 'insert_drive_file'}
+                    </span>
+                    <span className="font-mono text-sm">{file.path}</span>
+                    <span className="ml-2 text-xs text-gray-400">- {file.description}</span>
+                  </li>
+                ))}
               </ul>
             </div>
             
             <div className="mt-6">
               <h3 className="text-lg font-medium text-white mb-3">Main Dependencies</h3>
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">express</span>
-                <span className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">mongoose</span>
-                <span className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">jsonwebtoken</span>
-                <span className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">bcrypt</span>
-                <span className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">joi</span>
-                <span className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">dotenv</span>
-                <span className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">cors</span>
-                <span className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">helmet</span>
+                {project.dependencies.map((dep, index) => (
+                  <span key={index} className="px-3 py-1 bg-[#2d2d2d] rounded-full text-sm text-white">
+                    {dep}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

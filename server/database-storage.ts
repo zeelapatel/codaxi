@@ -46,15 +46,17 @@ export class DatabaseStorage implements IStorage {
   
   async createProject(insertProject: Omit<InsertProject, "createdAt">): Promise<Project> {
     const result = await query(
-      'INSERT INTO projects (name, language, file_count, total_lines, stats, user_id, repository_url, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      'INSERT INTO projects (name, language, file_count, total_lines, stats, main_files, dependencies, user_id, repository_url, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
       [
         insertProject.name, 
         insertProject.language,
-        insertProject.fileCount,
-        insertProject.totalLines,
+        insertProject.file_count,
+        insertProject.total_lines,
         JSON.stringify(insertProject.stats),
-        insertProject.userId || null,
-        insertProject.repositoryUrl || null,
+        JSON.stringify(insertProject.main_files || []),
+        JSON.stringify(insertProject.dependencies || []),
+        insertProject.user_id || null,
+        insertProject.repository_url || null,
         new Date()
       ]
     );

@@ -25,15 +25,13 @@ export interface ProjectAnalysis {
   id: string;
   name: string;
   language: string;
-  fileCount: number;
-  totalLines: number;
+  file_count: number;
+  total_lines: number;
   stats: ProjectStats;
-  files?: FileInfo[];
-  dependencies?: DependencyLink[];
-  summary?: string;
-  keyFiles?: { path: string; description: string }[];
-  mainDependencies?: string[];
-  analysisDate: string;
+  main_files: { path: string; description: string }[];
+  dependencies: string[];
+  repository_url: string;
+  created_at: string;
 }
 
 export interface ProjectDocument {

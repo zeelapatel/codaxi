@@ -2,6 +2,17 @@ import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export interface ProjectStats {
+  jsFiles: number;
+  jsonFiles: number;
+  mdFiles: number;
+}
+
+export interface MainFile {
+  path: string;
+  description: string;
+}
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -21,22 +32,26 @@ export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   language: text("language").notNull(),
-  repositoryUrl: text("repository_url"),
-  fileCount: integer("file_count").notNull(),
-  totalLines: integer("total_lines").notNull(),
+  repository_url: text("repository_url"),
+  file_count: integer("file_count").notNull(),
+  total_lines: integer("total_lines").notNull(),
   stats: jsonb("stats").notNull(),
-  userId: integer("user_id").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  main_files: jsonb("main_files").notNull().default('[]'),
+  dependencies: jsonb("dependencies").notNull().default('[]'),
+  user_id: integer("user_id").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertProjectSchema = createInsertSchema(projects).pick({
   name: true,
   language: true,
-  repositoryUrl: true,
-  fileCount: true,
-  totalLines: true,
+  repository_url: true,
+  file_count: true,
+  total_lines: true,
   stats: true,
-  userId: true,
+  main_files: true,
+  dependencies: true,
+  user_id: true,
 });
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;

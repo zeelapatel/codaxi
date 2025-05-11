@@ -22,6 +22,8 @@ async function initializeDatabase() {
         file_count INTEGER NOT NULL,
         total_lines INTEGER NOT NULL,
         stats JSONB NOT NULL,
+        main_files JSONB NOT NULL DEFAULT '[]',
+        dependencies JSONB NOT NULL DEFAULT '[]',
         user_id INTEGER REFERENCES users(id),
         repository_url VARCHAR(255),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -53,17 +55,11 @@ async function initializeDatabase() {
     console.log('Database initialized successfully!');
   } catch (error) {
     console.error('Error initializing database:', error);
+    process.exit(1);
   } finally {
-    // Close pool when using this script directly
-    if (require.main === module) {
-      await pool.end();
-    }
+    await pool.end();
   }
 }
 
-// Run if script is executed directly
-if (require.main === module) {
-  initializeDatabase();
-}
-
-export { initializeDatabase };
+// Always run initialization when this script is executed
+initializeDatabase();
