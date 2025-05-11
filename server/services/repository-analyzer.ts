@@ -2,7 +2,9 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ProjectStats } from '@shared/schema';
+import { ProjectStats, ProjectSummary } from '@shared/schema';
+import { fdir } from "fdir";
+import { FileSystemAgent } from './file-system-agent';
 
 const execAsync = promisify(exec);
 
@@ -11,15 +13,27 @@ interface ProjectAnalysis {
   totalLines: number;
   stats: ProjectStats;
   analysisDate: Date;
-  mainFiles: { path: string; description: string }[];
+  mainFiles: { path: string; description: string; confidence?: number }[];
   dependencies: string[];
+  projectType?: string;
+  suggestedStructure?: {
+    entryPoints: string[];
+    configFiles: string[];
+    testFiles: string[];
+    assetFiles: string[];
+  };
+  summary: ProjectSummary;
 }
 
 export class RepositoryAnalyzer {
   private tempDir: string;
+  private fileSystemAgent: FileSystemAgent;
 
-  constructor(tempDir: string = path.join(process.cwd(), 'analysis_temp')) {
+  constructor(
+    tempDir: string = path.join(process.cwd(), 'analysis_temp')
+  ) {
     this.tempDir = tempDir;
+    this.fileSystemAgent = new FileSystemAgent();
   }
 
   async analyze(repositoryUrl: string, branch: string = 'main'): Promise<ProjectAnalysis> {
@@ -34,18 +48,35 @@ export class RepositoryAnalyzer {
       const cloneResult = await execAsync(`git clone --depth 1 --branch ${branch} ${repositoryUrl} "${repoPath}"`);
       console.log('Clone completed:', cloneResult.stdout);
 
-      const stats = await this.getRepositoryStats(repoPath);
-      const mainFiles = await this.findMainFiles(repoPath);
-      const dependencies = await this.getDependencies(repoPath);
+      // Use FileSystemAgent for intelligent file analysis
+      const aiAnalysis = await this.fileSystemAgent.analyzeFileStructure(repoPath);
       
+      const stats = await this.getRepositoryStats(repoPath);
+      const dependencies = await this.getDependencies(repoPath);
 
       await fs.rm(repoPath, { recursive: true, force: true });
 
+      // Log the AI analysis before returning
+      console.log('AI Analysis result:', JSON.stringify(aiAnalysis, null, 2));
+
+      // Ensure summary has all required fields
+      const summary: ProjectSummary = {
+        overview: aiAnalysis.summary?.overview || 'No overview available',
+        architecture: aiAnalysis.summary?.architecture || 'Architecture information not available',
+        testingApproach: aiAnalysis.summary?.testingApproach || 'Testing information not available',
+        codeQuality: aiAnalysis.summary?.codeQuality || 'Code quality assessment not available'
+      };
+
+      console.log('Formatted summary:', JSON.stringify(summary, null, 2));
+
       return {
         ...stats,
-        mainFiles,
+        mainFiles: aiAnalysis.mainFiles,
         dependencies,
-        analysisDate: new Date()
+        analysisDate: new Date(),
+        projectType: aiAnalysis.projectType,
+        suggestedStructure: aiAnalysis.suggestedStructure,
+        summary
       };
     } catch (error) {
       console.error('Error during analysis:', error);
@@ -54,54 +85,78 @@ export class RepositoryAnalyzer {
     }
   }
 
+  // Rest of your methods (findMainFiles, getDependencies, getRepositoryStats)
+
   private async findMainFiles(repoPath: string): Promise<{ path: string; description: string }[]> {
     const mainFiles: { path: string; description: string }[] = [];
     
     try {
-      const files = await fs.readdir(repoPath, { withFileTypes: true });
-      
-      // Check for common Node.js entry points and important files
-      const keyFiles = [
-        { name: 'index.js', description: 'Main entry point' },
-        { name: 'app.js', description: 'Application entry point' },
-        { name: 'server.js', description: 'Server entry point' },
-        { name: 'package.json', description: 'Project configuration and dependencies' },
-        { name: 'README.md', description: 'Project documentation' },
-        { name: '.env.example', description: 'Environment variables template' },
-      ];
+      // Use fdir to scan for potential entry points
+      const crawler = new fdir()
+        .exclude((dirName) => dirName === 'node_modules' || dirName === '.git' || dirName === 'test' || dirName === 'tests')
+        .withFullPaths()
+        .filter((path) => {
+          const filename = path.split('/').pop()?.toLowerCase() || '';
+          return [
+            'index.ts', 'index.js', 'index.tsx', 'index.jsx',
+            'main.ts', 'main.js', 'main.tsx', 'main.jsx',
+            'app.ts', 'app.js', 'app.tsx', 'app.jsx',
+            'server.ts', 'server.js'
+          ].includes(filename);
+        })
+        .crawl(repoPath);
 
-      // Check src directory if it exists
-      const srcPath = path.join(repoPath, 'src');
-      if (await fs.stat(srcPath).catch(() => null)) {
-        const srcFiles = await fs.readdir(srcPath);
-        for (const file of srcFiles) {
-          if (file === 'index.js' || file === 'app.js' || file === 'main.js') {
-            mainFiles.push({ 
-              path: `src/${file}`, 
-              description: 'Source entry point' 
-            });
-          }
-        }
+      const files = await crawler.withPromise();
+
+      // Read package.json to identify the main entry point
+      const packageJsonPath = path.join(repoPath, 'package.json');
+      let mainFromPackageJson: string | undefined;
+      
+      try {
+        const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
+        mainFromPackageJson = packageJson.main || packageJson.module;
+      } catch (error) {
+        // Package.json might not exist or be invalid, continue without it
       }
 
-      // Check for key files in root
-      for (const file of files) {
-        const keyFile = keyFiles.find(k => k.name === file.name);
-        if (keyFile) {
+      // Process found files
+      for (const fullPath of files) {
+        const relativePath = path.relative(repoPath, fullPath);
+        const dirName = path.dirname(relativePath);
+        const fileName = path.basename(relativePath);
+        
+        // Determine if this is a main entry point
+        let description = '';
+        
+        if (mainFromPackageJson && relativePath === mainFromPackageJson) {
+          description = 'Main package entry point';
+        } else if (dirName === 'src' || dirName.includes('src/')) {
+          if (fileName.startsWith('index.')) {
+            description = 'Source directory entry point';
+          } else if (fileName.startsWith('main.')) {
+            description = 'Main application entry point';
+          } else if (fileName.startsWith('app.')) {
+            description = 'Application component';
+          }
+        } else if (dirName === '.' || dirName === '') {
+          if (fileName.startsWith('index.')) {
+            description = 'Root entry point';
+          } else if (fileName.startsWith('server.')) {
+            description = 'Server entry point';
+          }
+        } else if (dirName.includes('server/') || dirName.includes('backend/')) {
+          description = 'Backend entry point';
+        } else if (dirName.includes('client/') || dirName.includes('frontend/')) {
+          description = 'Frontend entry point';
+        }
+
+        // Only add files where we could determine a clear purpose
+        if (description) {
           mainFiles.push({ 
-            path: file.name, 
-            description: keyFile.description 
+            path: relativePath,
+            description 
           });
         }
-      }
-
-      // Look for route files
-      const routesPath = path.join(repoPath, 'routes');
-      if (await fs.stat(routesPath).catch(() => null)) {
-        mainFiles.push({ 
-          path: 'routes/index.js', 
-          description: 'API routes definition' 
-        });
       }
 
       return mainFiles;
@@ -146,53 +201,47 @@ export class RepositoryAnalyzer {
       return content.split('\n').length;
     }
 
-    async function processDirectory(dirPath: string) {
-      const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        const fullPath = path.join(dirPath, entry.name);
-
-        if (entry.isDirectory()) {
-          // Skip node_modules and .git directories
-          if (entry.name !== 'node_modules' && entry.name !== '.git') {
-            await processDirectory(fullPath);
-          } else {
-            console.log('Skipping directory:', entry.name);
-          }
-        } else if (entry.isFile()) {
-          const extension = path.extname(entry.name).toLowerCase();
-          const lines = await countLines(fullPath);
-          stats.totalLines += lines;
-
-          // Count file based on type
-          switch (extension) {
-            case '.js':
-            case '.jsx':
-            case '.ts':
-            case '.tsx':
-              stats.stats.jsFiles++;
-              stats.fileCount++;
-              break;
-            case '.json':
-              stats.stats.jsonFiles++;
-              stats.fileCount++;
-              break;
-            case '.md':
-            case '.markdown':
-              stats.stats.mdFiles++;
-              stats.fileCount++;
-              break;
-            default:
-              // Count other files too
-              stats.fileCount++;
-          }
-        }
-      }
-    }
-
     console.log('Starting directory processing...');
-    await processDirectory(repoPath);
+    
+    // Create a new fdir instance with exclusion patterns
+    const crawler = new fdir()
+      .exclude((dirName) => dirName === 'node_modules' || dirName === '.git')
+      .withFullPaths()
+      .crawl(repoPath);
+
+    const files = await crawler.withPromise();
+    
+    // Process each file
+    await Promise.all(files.map(async (fullPath: string) => {
+      const extension = path.extname(fullPath).toLowerCase();
+      const lines = await countLines(fullPath);
+      stats.totalLines += lines;
+
+      // Count file based on type
+      switch (extension) {
+        case '.js':
+        case '.jsx':
+        case '.ts':
+        case '.tsx':
+          stats.stats.jsFiles++;
+          stats.fileCount++;
+          break;
+        case '.json':
+          stats.stats.jsonFiles++;
+          stats.fileCount++;
+          break;
+        case '.md':
+        case '.markdown':
+          stats.stats.mdFiles++;
+          stats.fileCount++;
+          break;
+        default:
+          // Count other files too
+          stats.fileCount++;
+      }
+    }));
+
     console.log('Final statistics:', JSON.stringify(stats, null, 2));
     return stats;
   }
-} 
+}

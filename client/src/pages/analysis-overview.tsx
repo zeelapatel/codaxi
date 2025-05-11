@@ -105,15 +105,25 @@ const AnalysisOverview: React.FC = () => {
             <h2 className="text-xl font-medium text-white mb-4">AI-Generated Summary</h2>
             
             <div className="prose prose-invert prose-sm max-w-none">
-              <p className="text-gray-300">
-                This is a Node.js API backend project using Express.js for routing and MongoDB as the database. The project follows a Model-View-Controller (MVC) architecture with clearly separated concerns. Authentication is implemented using JWT tokens, and the API endpoints are RESTful.
-              </p>
-              <p className="text-gray-300 mt-4">
-                The core functionality is divided across several modules, with the main entry point being <code>app.js</code>. Configuration is managed through environment variables using dotenv. The project includes comprehensive error handling and validation using Joi schema validation.
-              </p>
-              <p className="text-gray-300 mt-4">
-                Test coverage is approximately 65%, primarily with Jest unit tests. The project uses ESLint for code quality and follows the Airbnb style guide for consistency.
-              </p>
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-white mb-2">Overview</h3>
+                <p className="text-gray-300">{project.summary?.overview || 'No overview available'}</p>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-white mb-2">Architecture</h3>
+                <p className="text-gray-300">{project.summary?.architecture || 'Architecture information not available'}</p>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-white mb-2">Testing Approach</h3>
+                <p className="text-gray-300">{project.summary?.testingApproach || 'Testing information not available'}</p>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-white mb-2">Code Quality Assessment</h3>
+                <p className="text-gray-300">{project.summary?.codeQuality || 'Code quality assessment not available'}</p>
+              </div>
             </div>
             
             <div className="mt-6">

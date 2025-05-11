@@ -32,6 +32,12 @@ export interface ProjectAnalysis {
   dependencies: string[];
   repository_url: string;
   created_at: string;
+  summary?: {
+    overview: string;
+    architecture: string;
+    testingApproach: string;
+    codeQuality: string;
+  };
 }
 
 export interface ProjectDocument {

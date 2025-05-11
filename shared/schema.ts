@@ -2,6 +2,13 @@ import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export interface ProjectSummary {
+  overview: string;
+  architecture: string;
+  testingApproach: string;
+  codeQuality: string;
+}
+
 export interface ProjectStats {
   jsFiles: number;
   jsonFiles: number;
@@ -38,11 +45,24 @@ export const projects = pgTable("projects", {
   stats: jsonb("stats").notNull(),
   main_files: jsonb("main_files").notNull().default('[]'),
   dependencies: jsonb("dependencies").notNull().default('[]'),
+  summary: jsonb("summary").notNull().default('{"overview":"","architecture":"","testingApproach":"","codeQuality":""}'),
   user_id: integer("user_id").references(() => users.id),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertProjectSchema = createInsertSchema(projects).pick({
+export const insertProjectSchema = createInsertSchema(projects, {
+  summary: z.object({
+    overview: z.string(),
+    architecture: z.string(),
+    testingApproach: z.string(),
+    codeQuality: z.string()
+  }).default({
+    overview: "",
+    architecture: "",
+    testingApproach: "",
+    codeQuality: ""
+  })
+}).pick({
   name: true,
   language: true,
   repository_url: true,
@@ -51,6 +71,7 @@ export const insertProjectSchema = createInsertSchema(projects).pick({
   stats: true,
   main_files: true,
   dependencies: true,
+  summary: true,
   user_id: true,
 });
 

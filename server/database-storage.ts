@@ -45,8 +45,19 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createProject(insertProject: Omit<InsertProject, "createdAt">): Promise<Project> {
+    // Log the incoming project data
+    console.log('Creating project with data:', {
+      ...insertProject,
+      summary: insertProject.summary || {}
+    });
+    const summary = insertProject.summary || {
+      overview: "No overview available",
+      architecture: "Architecture information not available",
+      testingApproach: "Testing information not available",
+      codeQuality: "Code quality assessment not available"
+    };
     const result = await query(
-      'INSERT INTO projects (name, language, file_count, total_lines, stats, main_files, dependencies, user_id, repository_url, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      'INSERT INTO projects (name, language, file_count, total_lines, stats, main_files, dependencies, summary, user_id, repository_url, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
       [
         insertProject.name, 
         insertProject.language,
@@ -55,11 +66,15 @@ export class DatabaseStorage implements IStorage {
         JSON.stringify(insertProject.stats),
         JSON.stringify(insertProject.main_files || []),
         JSON.stringify(insertProject.dependencies || []),
+        JSON.stringify(summary), // Ensure summary is properly formatted
         insertProject.user_id || null,
         insertProject.repository_url || null,
         new Date()
       ]
     );
+
+    // Log the result
+    console.log('Created project with result:', result[0]);
     return result[0];
   }
   

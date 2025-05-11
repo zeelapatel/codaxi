@@ -166,14 +166,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors: validation.error.flatten()
         });
       }
-
+  
       const { repositoryUrl, branch, language } = validation.data;
       
       console.log('Starting GitHub repository analysis:', repositoryUrl);
       const analyzer = new RepositoryAnalyzer();
       const analysis = await analyzer.analyze(repositoryUrl, branch);
       console.log('Analysis completed:', JSON.stringify(analysis, null, 2));
-
+  
       const projectData = {
         name: repositoryUrl.split("/").pop()?.replace(".git", "") || "GitHub Project",
         language,
@@ -183,10 +183,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stats: analysis.stats || { jsFiles: 0, jsonFiles: 0, mdFiles: 0 },
         main_files: analysis.mainFiles || [],
         dependencies: analysis.dependencies || [],
+        summary: analysis.summary, // Make sure the summary is included
         user_id: req.user?.id || null
       };
       console.log('Project data to save:', JSON.stringify(projectData, null, 2));
-
+  
       const project = await storage.createProject(projectData);
       console.log('Saved project:', JSON.stringify(project, null, 2));
       
