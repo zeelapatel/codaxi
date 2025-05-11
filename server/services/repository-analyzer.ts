@@ -36,7 +36,23 @@ export class RepositoryAnalyzer {
     this.fileSystemAgent = new FileSystemAgent();
   }
 
-  async analyze(repositoryUrl: string, branch: string = 'main'): Promise<ProjectAnalysis> {
+  private getAuthenticatedUrl(repositoryUrl: string, accessToken: string): string {
+    // Convert HTTPS URL to authenticated format
+    if (repositoryUrl.startsWith('https://github.com/')) {
+      return repositoryUrl.replace(
+        'https://github.com/',
+        `https://oauth2:${accessToken}@github.com/`
+      );
+    }
+    // Handle SSH URLs if needed
+    if (repositoryUrl.startsWith('git@github.com:')) {
+      const repoPath = repositoryUrl.replace('git@github.com:', '');
+      return `https://oauth2:${accessToken}@github.com/${repoPath}`;
+    }
+    return repositoryUrl;
+  }
+
+  async analyze(repositoryUrl: string, branch: string = 'main', accessToken?: string): Promise<ProjectAnalysis> {
     const repoName = repositoryUrl.split('/').pop()?.replace('.git', '') || 'repo';
     const repoPath = path.join(this.tempDir, Date.now().toString(), repoName);
 
@@ -45,7 +61,11 @@ export class RepositoryAnalyzer {
 
       await fs.mkdir(path.dirname(repoPath), { recursive: true });
 
-      const cloneResult = await execAsync(`git clone --depth 1 --branch ${branch} ${repositoryUrl} "${repoPath}"`);
+      // Use authenticated URL if access token is provided
+      const cloneUrl = accessToken ? this.getAuthenticatedUrl(repositoryUrl, accessToken) : repositoryUrl;
+      console.log('Cloning repository:', repositoryUrl.replace(accessToken || '', '[TOKEN]')); // Log URL without exposing token
+
+      const cloneResult = await execAsync(`git clone --depth 1 --branch ${branch} "${cloneUrl}" "${repoPath}"`);
       console.log('Clone completed:', cloneResult.stdout);
 
       // Use FileSystemAgent for intelligent file analysis

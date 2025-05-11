@@ -23,6 +23,14 @@ const fileUploadSchema = z.object({
   language: z.string().min(1)
 });
 
+declare module 'express-session' {
+  interface SessionData {
+    github_access_token?: string;
+    githubToken?: string;
+    user_id?: number;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   setupAuth(app);
@@ -66,7 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Store token in session
       if (req.session) {
-        req.session.githubToken = access_token;
+        req.session.github_access_token = access_token;
       }
 
       // Redirect to project upload page
@@ -79,7 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get user's GitHub repositories
   app.get('/api/github/repositories', async (req, res) => {
-    const githubToken = req.session?.githubToken;
+    const githubToken = req.session?.github_access_token;
 
     if (!githubToken) {
       return res.status(401).json({ message: 'GitHub authentication required' });
@@ -156,47 +164,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Analyze GitHub repository
-  app.post("/api/projects/analyze/github", async (req, res) => {
+  // GitHub repository analysis
+  app.post('/api/projects/analyze/github', async (req, res) => {
     try {
-      const validation = githubRepoSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          message: "Invalid request data",
-          errors: validation.error.flatten()
-        });
-      }
-  
-      const { repositoryUrl, branch, language } = validation.data;
+      const { repositoryUrl, branch = 'main', language } = req.body;
       
+      // Get the GitHub access token from the session
+      const accessToken = req.session?.github_access_token;
+      if (!accessToken) {
+        throw new Error('GitHub access token not found. Please reconnect your GitHub account.');
+      }
+
       console.log('Starting GitHub repository analysis:', repositoryUrl);
+      
       const analyzer = new RepositoryAnalyzer();
-      const analysis = await analyzer.analyze(repositoryUrl, branch);
-      console.log('Analysis completed:', JSON.stringify(analysis, null, 2));
-  
-      const projectData = {
-        name: repositoryUrl.split("/").pop()?.replace(".git", "") || "GitHub Project",
+      const analysis = await analyzer.analyze(repositoryUrl, branch, accessToken);
+      
+      // Create project in database
+      const project = await storage.createProject({
+        name: repositoryUrl.split('/').pop()?.replace('.git', '') || 'Unknown Project',
         language,
         repository_url: repositoryUrl,
-        file_count: analysis.fileCount || 0,
-        total_lines: analysis.totalLines || 0,
-        stats: analysis.stats || { jsFiles: 0, jsonFiles: 0, mdFiles: 0 },
-        main_files: analysis.mainFiles || [],
-        dependencies: analysis.dependencies || [],
-        summary: analysis.summary, // Make sure the summary is included
-        user_id: req.user?.id || null
-      };
-      console.log('Project data to save:', JSON.stringify(projectData, null, 2));
-  
-      const project = await storage.createProject(projectData);
-      console.log('Saved project:', JSON.stringify(project, null, 2));
-      
-      res.status(201).json(project);
-    } catch (error) {
-      console.error('Error analyzing repository:', error);
-      res.status(500).json({
-        message: error instanceof Error ? error.message : "Failed to analyze repository"
+        file_count: analysis.fileCount,
+        total_lines: analysis.totalLines,
+        stats: analysis.stats,
+        main_files: analysis.mainFiles,
+        dependencies: analysis.dependencies,
+        summary: analysis.summary,
+        user_id: req.session?.user_id || null
       });
+
+      res.status(201).json(project);
+    } catch (error: any) {
+      console.error('Error analyzing repository:', error);
+      res.status(500).json({ message: error?.message || 'Failed to analyze repository' });
     }
   });
 
