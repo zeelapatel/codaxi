@@ -1,17 +1,10 @@
-import { type User, type InsertUser, type Project, type InsertProject, type Document, type InsertDocument } from "@shared/schema";
+import { type User, type InsertUser, type Project, type InsertProject, type Document, type InsertDocument, type GraphData, type GraphDataRecord } from "@shared/schema";
 import { pool, query } from "./db";
 import { IStorage } from "./storage";
 
 // Database storage implementation
 export class DatabaseStorage implements IStorage {
-  // Temporary storage for ZIP uploads
-  private tempProjects: Map<string, any>;
-  private tempDocuments: Map<string, any>;
-
-  constructor() {
-    this.tempProjects = new Map();
-    this.tempDocuments = new Map();
-  }
+  constructor() {}
 
   async getUser(id: number): Promise<User | undefined> {
     const users = await query('SELECT * FROM users WHERE id = $1', [id]);
@@ -40,10 +33,43 @@ export class DatabaseStorage implements IStorage {
     return projects[0];
   }
 
-  async getTempProject(id: string): Promise<any | undefined> {
-    return this.tempProjects.get(id);
+  async getProjectGraph(projectId: number): Promise<GraphData | null> {
+    const result = await query(
+      'SELECT data FROM graph_data WHERE project_id = $1 ORDER BY updated_at DESC LIMIT 1',
+      [projectId]
+    );
+    return result[0]?.data || null;
   }
-  
+
+  async saveProjectGraph(projectId: number, graphData: GraphData): Promise<GraphDataRecord> {
+    // Check if graph data already exists for this project
+    const existing = await query(
+      'SELECT id FROM graph_data WHERE project_id = $1',
+      [projectId]
+    );
+
+    if (existing.length > 0) {
+      // Update existing record
+      const result = await query(
+        'UPDATE graph_data SET data = $1, updated_at = NOW() WHERE project_id = $2 RETURNING *',
+        [JSON.stringify(graphData), projectId]
+      );
+      return result[0];
+    } else {
+      // Insert new record
+      const result = await query(
+        'INSERT INTO graph_data (project_id, data) VALUES ($1, $2) RETURNING *',
+        [projectId, JSON.stringify(graphData)]
+      );
+      return result[0];
+    }
+  }
+
+  async getDocumentation(projectId: number): Promise<Document | undefined> {
+    const documents = await query('SELECT * FROM documents WHERE project_id = $1', [projectId]);
+    return documents[0];
+  }
+
   async createProject(insertProject: Omit<InsertProject, "createdAt">): Promise<Project> {
     // Log the incoming project data
     console.log('Creating project with data:', {
@@ -78,20 +104,6 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   
-  async createTempProject(project: any): Promise<any> {
-    this.tempProjects.set(project.id, project);
-    return project;
-  }
-  
-  async getDocumentation(projectId: number): Promise<Document | undefined> {
-    const documents = await query('SELECT * FROM documents WHERE project_id = $1', [projectId]);
-    return documents[0];
-  }
-  
-  async getTempDocumentation(projectId: string): Promise<any | undefined> {
-    return this.tempDocuments.get(projectId);
-  }
-  
   async createDocumentation(insertDocument: Omit<InsertDocument, "createdAt">): Promise<Document> {
     const result = await query(
       'INSERT INTO documents (project_id, title, content, sections, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -104,14 +116,5 @@ export class DatabaseStorage implements IStorage {
       ]
     );
     return result[0];
-  }
-  
-  async createTempDocumentation(document: any): Promise<any> {
-    const documentWithId = {
-      ...document,
-      createdAt: new Date().toISOString()
-    };
-    this.tempDocuments.set(document.projectId, documentWithId);
-    return documentWithId;
   }
 }

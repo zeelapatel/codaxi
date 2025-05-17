@@ -1,5 +1,5 @@
-import { users, type User, type InsertUser, projects, type Project, type InsertProject, documents, type Document, type InsertDocument } from "@shared/schema";
-import { DatabaseStorage } from "./database-storage";
+import { users, type User, type InsertUser, projects, type Project, type InsertProject, documents, type Document, type InsertDocument, ProjectStats, ProjectSummary, GraphData, GraphDataRecord } from "@shared/schema";
+import { DatabaseStorage as BaseStorage } from "./database-storage";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -13,15 +13,21 @@ export interface IStorage {
   // Project methods
   getAllProjects(): Promise<Project[]>;
   getProject(id: number): Promise<Project | undefined>;
-  getTempProject(id: string): Promise<any | undefined>; // For ZIP uploads
   createProject(project: Omit<InsertProject, "createdAt">): Promise<Project>;
-  createTempProject(project: any): Promise<any>; // For ZIP uploads
   
   // Document methods
   getDocumentation(projectId: number): Promise<Document | undefined>;
-  getTempDocumentation(projectId: string): Promise<any | undefined>; // For ZIP uploads
   createDocumentation(document: Omit<InsertDocument, "createdAt">): Promise<Document>;
-  createTempDocumentation(document: any): Promise<any>; // For ZIP uploads
+
+  // Graph methods
+  getProjectGraph(projectId: number): Promise<GraphData | null>;
+  saveProjectGraph(projectId: number, graphData: GraphData): Promise<GraphDataRecord>;
+  
+  // Optional temporary storage methods for ZIP uploads
+  getTempProject?(id: string): Promise<any | undefined>;
+  createTempProject?(project: any): Promise<any>;
+  getTempDocumentation?(projectId: string): Promise<any | undefined>;
+  createTempDocumentation?(document: any): Promise<any>;
 }
 
 export class MemStorage implements IStorage {
@@ -80,10 +86,10 @@ export class MemStorage implements IStorage {
     const id = this.currentProjectId++;
     const project: Project = { 
       ...insertProject, 
-      id, 
-      repositoryUrl: insertProject.repositoryUrl || null,
-      userId: insertProject.userId || null,
-      createdAt: new Date() 
+      id,
+      repository_url: insertProject.repository_url || null,
+      user_id: insertProject.user_id || null,
+      created_at: new Date() 
     };
     this.projects.set(id, project);
     return project;
@@ -126,7 +132,16 @@ export class MemStorage implements IStorage {
     this.tempDocuments.set(document.projectId, documentWithId);
     return documentWithId;
   }
+
+  // Graph methods
+  async getProjectGraph(projectId: number): Promise<GraphData | null> {
+    return null;
+  }
+
+  async saveProjectGraph(projectId: number, graphData: GraphData): Promise<GraphDataRecord> {
+    throw new Error("Not implemented in memory storage");
+  }
 }
 
-// Use database storage implementation instead of in-memory storage
-export const storage = new DatabaseStorage();
+// Use database storage implementation
+export const storage = new BaseStorage();

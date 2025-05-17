@@ -194,6 +194,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user_id: req.session?.user_id || null
       });
 
+      // Save the graph data immediately
+      if (analysis.dependencyGraph) {
+        await storage.saveProjectGraph(project.id, analysis.dependencyGraph);
+      }
+
       res.status(201).json(project);
     } catch (error: any) {
       console.error('Error analyzing repository:', error);
@@ -245,55 +250,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get project graph data
   app.get("/api/projects/:id/graph", async (req, res) => {
     try {
-      const projectId = req.params.id;
+      const projectId = parseInt(req.params.id);
 
-      // In a real implementation, we would generate this from actual analysis
-      // For the MVP, we'll return sample graph data
-      const graphData = {
-        nodes: [
-          { id: "app.js", name: "app.js", group: 1, radius: 20 },
-          { id: "routes/index.js", name: "routes/index.js", group: 2, radius: 15 },
-          { id: "routes/api.js", name: "routes/api.js", group: 2, radius: 15 },
-          { id: "routes/users.js", name: "routes/users.js", group: 2, radius: 15 },
-          { id: "routes/auth.js", name: "routes/auth.js", group: 2, radius: 15 },
-          { id: "config/db.js", name: "config/db.js", group: 3, radius: 12 },
-          { id: "controllers/user.js", name: "controllers/user.js", group: 4, radius: 12 },
-          { id: "controllers/auth.js", name: "controllers/auth.js", group: 4, radius: 12 },
-          { id: "controllers/product.js", name: "controllers/product.js", group: 4, radius: 12 },
-          { id: "controllers/order.js", name: "controllers/order.js", group: 4, radius: 12 },
-          { id: "models/User.js", name: "models/User.js", group: 5, radius: 10 },
-          { id: "models/Product.js", name: "models/Product.js", group: 5, radius: 10 },
-          { id: "models/Order.js", name: "models/Order.js", group: 5, radius: 10 },
-          { id: "middleware/auth.js", name: "middleware/auth.js", group: 5, radius: 10 },
-          { id: "middleware/error.js", name: "middleware/error.js", group: 5, radius: 10 },
-        ],
-        links: [
-          { source: "app.js", target: "routes/index.js", value: 1 },
-          { source: "app.js", target: "routes/api.js", value: 1 },
-          { source: "app.js", target: "routes/users.js", value: 1 },
-          { source: "app.js", target: "routes/auth.js", value: 1 },
-          { source: "app.js", target: "config/db.js", value: 1 },
-          { source: "app.js", target: "middleware/auth.js", value: 1 },
-          { source: "app.js", target: "middleware/error.js", value: 1 },
-          { source: "routes/index.js", target: "controllers/user.js", value: 1 },
-          { source: "routes/api.js", target: "controllers/user.js", value: 1 },
-          { source: "routes/users.js", target: "controllers/product.js", value: 1 },
-          { source: "routes/auth.js", target: "controllers/auth.js", value: 1 },
-          { source: "controllers/user.js", target: "models/User.js", value: 1 },
-          { source: "controllers/auth.js", target: "models/User.js", value: 1 },
-          { source: "controllers/product.js", target: "models/Product.js", value: 1 },
-          { source: "controllers/order.js", target: "models/Order.js", value: 1 },
-          { source: "middleware/auth.js", target: "controllers/auth.js", value: 1 },
-          { source: "middleware/auth.js", target: "controllers/user.js", value: 1 },
-          { source: "middleware/error.js", target: "controllers/product.js", value: 1 },
-          { source: "middleware/error.js", target: "controllers/order.js", value: 1 },
-        ]
-      };
+      // Handle string IDs (for mock ZIP uploads)
+      if (isNaN(projectId) && req.params.id.startsWith('zip-')) {
+        return res.status(404).json({ message: "Graph data not available for ZIP uploads" });
+      }
 
-      res.json(graphData);
+      // Get the project to find its repository URL
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      // If we already have graph data in storage, return that
+      const existingGraph = await storage.getProjectGraph(projectId);
+      if (existingGraph) {
+        return res.json(existingGraph);
+      }
+
+      // If no existing graph and no repository URL, return error
+      if (!project.repository_url) {
+        return res.status(400).json({ message: "No repository URL available for analysis" });
+      }
+
+      // Check for GitHub token
+      const githubToken = req.session?.github_access_token;
+      if (!githubToken) {
+        return res.status(401).json({ message: "GitHub authentication required" });
+      }
+
+      // If no existing graph, analyze the repository to generate one
+      const analyzer = new RepositoryAnalyzer();
+      const analysis = await analyzer.analyze(project.repository_url, 'main', githubToken);
+
+      // Store the graph data for future use
+      await storage.saveProjectGraph(projectId, analysis.dependencyGraph);
+
+      res.json(analysis.dependencyGraph);
     } catch (error) {
+      console.error('Error generating graph data:', error);
       res.status(500).json({
-        message: error instanceof Error ? error.message : "Failed to retrieve project graph"
+        message: error instanceof Error ? error.message : "Failed to generate graph data"
       });
     }
   });

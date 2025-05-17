@@ -32,6 +32,7 @@ const ProjectUpload: React.FC = () => {
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
+  const [inputMode, setInputMode] = useState<'dropdown' | 'manual'>('dropdown');
 
   // Fetch repositories when component mounts
   useEffect(() => {
@@ -277,49 +278,78 @@ const ProjectUpload: React.FC = () => {
           {isGitHubTab ? (
             <div className="p-6">
               <form onSubmit={handleSubmit}>
-                {repositories.length > 0 ? (
-                  <div className="mb-6">
-                    <label className="block text-gray-300 mb-2">Select Repository</label>
-                    <div className="grid gap-4">
-                      {repositories.map(repo => (
-                        <div
-                          key={repo.id}
-                          className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                            selectedRepo?.id === repo.id
-                              ? 'border-[#f50057] bg-[#2d2d2d]'
-                              : 'border-[#333333] hover:border-[#f50057]'
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <label className="block text-gray-300" htmlFor="repoUrl">Repository URL</label>
+                    {repositories.length > 0 && (
+                      <div className="flex items-center space-x-4">
+                        <button
+                          type="button"
+                          onClick={() => setInputMode('dropdown')}
+                          className={`px-3 py-1 rounded-md text-sm ${
+                            inputMode === 'dropdown'
+                              ? 'bg-[#f50057] text-white'
+                              : 'bg-[#2d2d2d] text-gray-400 hover:text-white'
                           }`}
-                          onClick={() => handleRepoSelect(repo)}
                         >
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-white font-medium">{repo.name}</h3>
-                            {repo.private && (
-                              <span className="text-xs bg-[#333333] text-gray-300 px-2 py-1 rounded">Private</span>
-                            )}
-                          </div>
-                          {repo.description && (
-                            <p className="text-gray-400 text-sm mt-1">{repo.description}</p>
-                          )}
-                          <div className="text-xs text-gray-500 mt-2">
-                            Default branch: {repo.defaultBranch}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                          Select Repository
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInputMode('manual')}
+                          className={`px-3 py-1 rounded-md text-sm ${
+                            inputMode === 'manual'
+                              ? 'bg-[#f50057] text-white'
+                              : 'bg-[#2d2d2d] text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          Enter URL
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="mb-6">
-                    <label className="block text-gray-300 mb-2" htmlFor="repoUrl">Repository URL</label>
-                    <Input
-                      id="repoUrl"
-                      value={repoUrl}
-                      onChange={(e) => setRepoUrl(e.target.value)}
-                      placeholder="https://github.com/username/repository"
-                      className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
-                      required
-                    />
+                  <div className="relative">
+                    {(repositories.length > 0 && inputMode === 'dropdown') ? (
+                      <Select 
+                        value={repoUrl} 
+                        onValueChange={(value) => {
+                          const selectedRepo = repositories.find(repo => repo.url === value);
+                          if (selectedRepo) {
+                            setRepoUrl(value);
+                            setBranch(selectedRepo.defaultBranch);
+                            setSelectedRepo(selectedRepo);
+                          }
+                        }}
+                      >
+                        <SelectTrigger
+                          id="repoUrl"
+                          className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
+                        >
+                          <SelectValue placeholder="Select a repository" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {repositories.map((repo) => (
+                            <SelectItem key={repo.id} value={repo.url}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{repo.name}</span>
+                                {repo.description && (
+                                  <span className="text-sm text-gray-400 truncate">{repo.description}</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={repoUrl}
+                        onChange={(e) => setRepoUrl(e.target.value)}
+                        placeholder="https://github.com/username/repository"
+                        className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
+                      />
+                    )}
                   </div>
-                )}
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>
@@ -360,14 +390,14 @@ const ProjectUpload: React.FC = () => {
                 </div>
                 <div className="mb-6">
                   <label htmlFor="projectDescription" className="block text-gray-300 mb-2">
-                    Write a short description of your project for AI:
+                    Write a short description of your project for AI: <label htmlFor="projectDescription" className="block text-gray-500 ">(optional)</label>
                   </label>
                   <textarea
                     id="projectDescription"
                     className="w-full bg-[#2d2d2d] border border-[#333333] rounded-md px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
                     placeholder="Enter a brief description of your project..."
                     rows={4}
-                    required
+                      
                   />
                 </div>
                 {isUploading && (

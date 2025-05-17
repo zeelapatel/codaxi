@@ -11,47 +11,31 @@ import LanguageBadge from "@/components/shared/language-badge";
 import AnalysisTabs from "@/components/shared/analysis-tabs";
 import DependencyGraph from "@/components/visualization/dependency-graph";
 
-// Sample graph data
-const sampleGraphData = {
-  nodes: [
-    { id: "app.js", name: "app.js", group: 1, radius: 20 },
-    { id: "routes/index.js", name: "routes/index.js", group: 2, radius: 15 },
-    { id: "routes/api.js", name: "routes/api.js", group: 2, radius: 15 },
-    { id: "routes/users.js", name: "routes/users.js", group: 2, radius: 15 },
-    { id: "routes/auth.js", name: "routes/auth.js", group: 2, radius: 15 },
-    { id: "config/db.js", name: "config/db.js", group: 3, radius: 12 },
-    { id: "controllers/user.js", name: "controllers/user.js", group: 4, radius: 12 },
-    { id: "controllers/auth.js", name: "controllers/auth.js", group: 4, radius: 12 },
-    { id: "controllers/product.js", name: "controllers/product.js", group: 4, radius: 12 },
-    { id: "controllers/order.js", name: "controllers/order.js", group: 4, radius: 12 },
-    { id: "models/User.js", name: "models/User.js", group: 5, radius: 10 },
-    { id: "models/Product.js", name: "models/Product.js", group: 5, radius: 10 },
-    { id: "models/Order.js", name: "models/Order.js", group: 5, radius: 10 },
-    { id: "middleware/auth.js", name: "middleware/auth.js", group: 5, radius: 10 },
-    { id: "middleware/error.js", name: "middleware/error.js", group: 5, radius: 10 },
-  ],
-  links: [
-    { source: "app.js", target: "routes/index.js", value: 1 },
-    { source: "app.js", target: "routes/api.js", value: 1 },
-    { source: "app.js", target: "routes/users.js", value: 1 },
-    { source: "app.js", target: "routes/auth.js", value: 1 },
-    { source: "app.js", target: "config/db.js", value: 1 },
-    { source: "app.js", target: "middleware/auth.js", value: 1 },
-    { source: "app.js", target: "middleware/error.js", value: 1 },
-    { source: "routes/index.js", target: "controllers/user.js", value: 1 },
-    { source: "routes/api.js", target: "controllers/user.js", value: 1 },
-    { source: "routes/users.js", target: "controllers/product.js", value: 1 },
-    { source: "routes/auth.js", target: "controllers/auth.js", value: 1 },
-    { source: "controllers/user.js", target: "models/User.js", value: 1 },
-    { source: "controllers/auth.js", target: "models/User.js", value: 1 },
-    { source: "controllers/product.js", target: "models/Product.js", value: 1 },
-    { source: "controllers/order.js", target: "models/Order.js", value: 1 },
-    { source: "middleware/auth.js", target: "controllers/auth.js", value: 1 },
-    { source: "middleware/auth.js", target: "controllers/user.js", value: 1 },
-    { source: "middleware/error.js", target: "controllers/product.js", value: 1 },
-    { source: "middleware/error.js", target: "controllers/order.js", value: 1 },
-  ]
-};
+interface Project {
+  id: string | number;
+  language: string;
+  name: string;
+  summary: {
+    overview: string;
+    architecture: string;
+    testingApproach: string;
+    codeQuality: string;
+  };
+}
+
+interface GraphData {
+  nodes: Array<{
+    id: string;
+    name: string;
+    group: number;
+    radius: number;
+  }>;
+  links: Array<{
+    source: string;
+    target: string;
+    value: number;
+  }>;
+}
 
 const RelationshipVisualization: React.FC = () => {
   const { id } = useParams();
@@ -66,15 +50,16 @@ const RelationshipVisualization: React.FC = () => {
   });
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  // For real implementation, fetch project data from API
-  const { data: project, isLoading } = useQuery({
-    queryKey: [`/api/projects/${id}`]
+  // Fetch project data
+  const { data: project, isLoading: isLoadingProject } = useQuery<Project>({
+    queryKey: [`/api/projects/${id}`],
+    enabled: !!id
   });
   
-  // For real implementation, fetch graph data from API
-  const { data: graphData, isLoading: isLoadingGraph } = useQuery({
+  // Fetch graph data
+  const { data: graphData, isLoading: isLoadingGraph } = useQuery<GraphData>({
     queryKey: [`/api/projects/${id}/graph`],
-    initialData: sampleGraphData
+    enabled: !!id
   });
 
   const handleFileTypeChange = (key: keyof typeof fileTypes) => {
@@ -88,7 +73,68 @@ const RelationshipVisualization: React.FC = () => {
     setIsFullscreen(!isFullscreen);
   };
 
-  if (isLoading) {
+  // Filter graph data based on file types and detail level
+  const filteredGraphData = React.useMemo(() => {
+    if (!graphData) return null;
+
+    let filtered = { ...graphData };
+
+    // Filter nodes based on file types
+    filtered.nodes = graphData.nodes.filter(node => {
+      const fileName = node.name.toLowerCase();
+      if (!fileTypes.jsFiles && (fileName.endsWith('.js') || fileName.endsWith('.jsx') || fileName.endsWith('.ts') || fileName.endsWith('.tsx'))) return false;
+      if (!fileTypes.jsonFiles && fileName.endsWith('.json')) return false;
+      if (!fileTypes.configFiles && (fileName.includes('config') || fileName.includes('.env'))) return false;
+      if (!fileTypes.testFiles && (fileName.includes('.test.') || fileName.includes('.spec.'))) return false;
+      return true;
+    });
+
+    // Filter links to only include connections between remaining nodes
+    const nodeIds = new Set(filtered.nodes.map(n => n.id));
+    filtered.links = graphData.links.filter(link => 
+      nodeIds.has(link.source) && nodeIds.has(link.target)
+    );
+
+    // Filter based on focus file if specified
+    if (focusFile) {
+      const focusedNodeIds = new Set([
+        ...filtered.nodes
+          .filter(n => n.name.toLowerCase().includes(focusFile.toLowerCase()))
+          .map(n => n.id),
+      ]);
+
+      // Add directly connected nodes
+      filtered.links.forEach(link => {
+        if (focusedNodeIds.has(link.source)) focusedNodeIds.add(link.target);
+        if (focusedNodeIds.has(link.target)) focusedNodeIds.add(link.source);
+      });
+
+      filtered.nodes = filtered.nodes.filter(n => focusedNodeIds.has(n.id));
+      filtered.links = filtered.links.filter(l => 
+        focusedNodeIds.has(l.source) && focusedNodeIds.has(l.target)
+      );
+    }
+
+    return filtered;
+  }, [graphData, fileTypes, focusFile]);
+
+  // Get most connected files
+  const mostConnectedFiles = React.useMemo(() => {
+    if (!graphData) return [];
+    
+    const connections = new Map<string, number>();
+    graphData.links.forEach(link => {
+      connections.set(link.source, (connections.get(link.source) || 0) + 1);
+      connections.set(link.target, (connections.get(link.target) || 0) + 1);
+    });
+
+    return Array.from(connections.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([file, count]) => ({ file, connections: count }));
+  }, [graphData]);
+
+  if (isLoadingProject || isLoadingGraph) {
     return (
       <section className="py-12 bg-[#121212]">
         <div className="container mx-auto px-4">
@@ -114,11 +160,11 @@ const RelationshipVisualization: React.FC = () => {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-light text-white">Relationship Visualization</h1>
           <div className="text-gray-300 flex items-center">
-            <LanguageBadge language={project?.language || "nodejs"} />
+            <LanguageBadge language={project?.language || "unknown"} />
           </div>
         </div>
         
-        <AnalysisTabs projectId={id} activeTab="relationships" />
+        <AnalysisTabs projectId={id || ""} activeTab="relationships" />
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Visualization Controls */}
@@ -126,6 +172,7 @@ const RelationshipVisualization: React.FC = () => {
             <h2 className="text-xl font-medium text-white mb-4">Visualization Controls</h2>
             
             <div className="space-y-4">
+                
               <div>
                 <label className="block text-gray-300 mb-2" htmlFor="viewType">View Type</label>
                 <Select value={viewType} onValueChange={setViewType}>
@@ -180,7 +227,7 @@ const RelationshipVisualization: React.FC = () => {
                       checked={fileTypes.jsFiles} 
                       onCheckedChange={() => handleFileTypeChange('jsFiles')}
                     />
-                    <label htmlFor="jsFiles" className="text-gray-300 cursor-pointer">JavaScript Files</label>
+                    <label htmlFor="jsFiles" className="text-gray-300 cursor-pointer">JavaScript/TypeScript Files</label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox 
@@ -208,14 +255,10 @@ const RelationshipVisualization: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
-              <Button className="w-full bg-primary-600 text-white px-4 py-2 rounded-md mt-4 hover:bg-primary-700 transition-colors">
-                Apply Filters
-              </Button>
             </div>
           </div>
           
-          {/* Visualization Graph */}
+          {/* Graph Visualization */}
           <div className={`${isFullscreen ? 'fixed inset-0 z-50 p-4 bg-[#121212]' : 'lg:col-span-3'} bg-[#1e1e1e] rounded-xl shadow-md p-6`}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-medium text-white">Dependency Graph</h2>
@@ -246,12 +289,17 @@ const RelationshipVisualization: React.FC = () => {
                 <div className="flex items-center justify-center h-full">
                   <div className="progress-indicator w-32" />
                 </div>
-              ) : (
+              ) : graphData ? (
                 <DependencyGraph 
                   data={graphData} 
                   width={800} 
-                  height={400} 
+                  height={400}
+                  viewType={viewType as "force" | "tree" | "circular"}
                 />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  No graph data available
+                </div>
               )}
             </div>
             
@@ -260,21 +308,13 @@ const RelationshipVisualization: React.FC = () => {
               <div>
                 <h3 className="text-lg font-medium text-white mb-3">Most Connected Files</h3>
                 <ul className="space-y-2">
-                  <li className="flex items-center text-gray-300">
-                    <span className="material-icons text-[#f50057] mr-2">hub</span>
-                    <span className="font-mono text-sm">app.js</span>
-                    <span className="ml-auto text-white font-medium">7 connections</span>
-                  </li>
-                  <li className="flex items-center text-gray-300">
-                    <span className="material-icons text-primary-400 mr-2">hub</span>
-                    <span className="font-mono text-sm">middleware/auth.js</span>
-                    <span className="ml-auto text-white font-medium">5 connections</span>
-                  </li>
-                  <li className="flex items-center text-gray-300">
-                    <span className="material-icons text-primary-400 mr-2">hub</span>
-                    <span className="font-mono text-sm">models/User.js</span>
-                    <span className="ml-auto text-white font-medium">4 connections</span>
-                  </li>
+                  {graphData && graphData.nodes.length > 0 && mostConnectedFiles.slice(0, 3).map(({ file, connections }) => (
+                    <li key={file} className="flex items-center text-gray-300">
+                      <span className="material-icons text-[#f50057] mr-2">hub</span>
+                      <span className="font-mono text-sm truncate" title={file}>{file.split('/').pop()}</span>
+                      <span className="ml-auto text-white font-medium">{connections} connections</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
               
@@ -282,18 +322,40 @@ const RelationshipVisualization: React.FC = () => {
               <div>
                 <h3 className="text-lg font-medium text-white mb-3">Potential Issues</h3>
                 <ul className="space-y-2">
-                  <li className="flex items-center text-gray-300">
-                    <span className="material-icons text-[#ff9800] mr-2">warning</span>
-                    <span className="text-sm">High coupling in <code className="font-mono">auth.js</code></span>
-                  </li>
-                  <li className="flex items-center text-gray-300">
-                    <span className="material-icons text-[#ff9800] mr-2">warning</span>
-                    <span className="text-sm">Circular dependency risk between models</span>
-                  </li>
-                  <li className="flex items-center text-gray-300">
-                    <span className="material-icons text-[#ff9800] mr-2">warning</span>
-                    <span className="text-sm">Unused imports in <code className="font-mono">routes/api.js</code></span>
-                  </li>
+                  {graphData && graphData.nodes.length > 0 && (
+                    <>
+                      {graphData.nodes.filter(node => 
+                        graphData.links.filter(link => 
+                          link.source === node.id || link.target === node.id
+                        ).length > 10
+                      ).map(node => (
+                        <li key={node.id} className="flex items-center text-gray-300">
+                          <span className="material-icons text-[#ff9800] mr-2">warning</span>
+                          <span className="text-sm">High coupling in <code className="font-mono">{node.name}</code></span>
+                        </li>
+                      ))}
+                      {graphData.nodes.filter(node => 
+                        !graphData.links.some(link => 
+                          link.source === node.id || link.target === node.id
+                        )
+                      ).map(node => (
+                        <li key={node.id} className="flex items-center text-gray-300">
+                          <span className="material-icons text-[#ff9800] mr-2">warning</span>
+                          <span className="text-sm">Isolated file: <code className="font-mono">{node.name}</code></span>
+                        </li>
+                      ))}
+                      {graphData.links.filter(link => 
+                        graphData.links.some(otherLink => 
+                          otherLink.source === link.target && otherLink.target === link.source
+                        )
+                      ).slice(0, 3).map(link => (
+                        <li key={`${link.source}-${link.target}`} className="flex items-center text-gray-300">
+                          <span className="material-icons text-[#ff9800] mr-2">warning</span>
+                          <span className="text-sm">Circular dependency between <code className="font-mono">{link.source}</code> and <code className="font-mono">{link.target}</code></span>
+                        </li>
+                      ))}
+                    </>
+                  )}
                 </ul>
               </div>
             </div>

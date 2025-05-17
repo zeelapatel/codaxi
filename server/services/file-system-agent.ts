@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { env } from '../config/env';
 import * as fs from 'fs/promises';
 import { ProjectSummary } from '@shared/schema';
+import { logger } from './logging-service';
 
 interface FileAnalysis {
   mainFiles: { path: string; description: string; confidence: number }[];
@@ -15,11 +16,29 @@ interface FileAnalysis {
     assetFiles: string[];
   };
   summary: ProjectSummary;
+  dependencyGraph: {
+    nodes: Array<{
+      id: string;
+      name: string;
+      group: number;
+      radius: number;
+    }>;
+    links: Array<{
+      source: string;
+      target: string;
+      value: number;
+    }>;
+  };
+}
+
+interface DependencyInfo {
+  imports: string[];
+  exports: string[];
 }
 
 export class FileSystemAgent {
   private openai: OpenAI;
-  private readonly MAX_FILE_SIZE = 1024 * 100; // 100KB limit for file reading
+  private readonly MAX_FILE_SIZE = 1024 * 1000000; // 100KB limit for file reading
   private readonly KEY_FILES = [
     'package.json',
     'tsconfig.json',
@@ -43,6 +62,106 @@ export class FileSystemAgent {
     });
   }
 
+  private async analyzeDependencies(filePath: string, content: string): Promise<DependencyInfo> {
+    const imports: string[] = [];
+    const exports: string[] = [];
+
+    // Match ES6 imports
+    const importRegex = /import\s+(?:{[^}]*}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]/g;
+    let importMatch;
+    while ((importMatch = importRegex.exec(content)) !== null) {
+      imports.push(this.resolveImportPath(filePath, importMatch[1]));
+    }
+
+    // Match require statements
+    const requireRegex = /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+    let requireMatch;
+    while ((requireMatch = requireRegex.exec(content)) !== null) {
+      imports.push(this.resolveImportPath(filePath, requireMatch[1]));
+    }
+
+    // Match exports
+    const exportMatches = content.match(/export\s+(?:default\s+)?(?:class|function|const|let|var)\s+(\w+)/g);
+    if (exportMatches) {
+      exports.push(...exportMatches);
+    }
+
+    return { imports, exports };
+  }
+
+  private resolveImportPath(currentFile: string, importPath: string): string {
+    if (importPath.startsWith('.')) {
+      // Resolve relative path
+      const dir = path.dirname(currentFile);
+      return path.resolve(dir, importPath);
+    }
+    return importPath;
+  }
+
+  private async generateDependencyGraph(repoPath: string, files: string[]): Promise<FileAnalysis['dependencyGraph']> {
+    const nodes: Set<string> = new Set();
+    const links: Map<string, Set<string>> = new Map();
+    const fileGroups: Map<string, number> = new Map();
+    let groupCounter = 1;
+
+    // Group files by directory
+    for (const file of files) {
+      const relativePath = path.relative(repoPath, file);
+      const dir = path.dirname(relativePath);
+      if (!fileGroups.has(dir)) {
+        fileGroups.set(dir, groupCounter++);
+      }
+    }
+
+    // Analyze dependencies for each file
+    for (const file of files) {
+      if (file.match(/\.(js|jsx|ts|tsx)$/)) {
+        try {
+          const content = await fs.readFile(file, 'utf-8');
+          const relativePath = path.relative(repoPath, file);
+          const { imports } = await this.analyzeDependencies(relativePath, content);
+
+          nodes.add(relativePath);
+          
+          if (!links.has(relativePath)) {
+            links.set(relativePath, new Set());
+          }
+
+          for (const imp of imports) {
+            if (imp.startsWith('.')) {
+              const resolvedImport = this.resolveImportPath(relativePath, imp);
+              links.get(relativePath)?.add(resolvedImport);
+              nodes.add(resolvedImport);
+            }
+          }
+        } catch (error) {
+          console.error(`Error analyzing dependencies for ${file}:`, error);
+        }
+      }
+    }
+
+    // Convert to graph format
+    const graphNodes = Array.from(nodes).map(file => ({
+      id: file,
+      name: file,
+      group: fileGroups.get(path.dirname(file)) || 1,
+      radius: 10 + (links.get(file)?.size || 0) * 2 // Size based on number of dependencies
+    }));
+
+    const graphLinks = Array.from(links.entries()).flatMap(([source, targets]) =>
+      Array.from(targets).map(target => ({
+        source,
+        target,
+        value: 1
+      }))
+    );
+
+    return {
+      nodes: graphNodes,
+      links: graphLinks
+    };
+  }
+
   async analyzeFileStructure(repoPath: string): Promise<FileAnalysis> {
     try {
       // Get all files using fdir
@@ -58,24 +177,27 @@ export class FileSystemAgent {
       const fileTree = files.map(file => path.relative(repoPath, file))
         .sort()
         .join('\n');
+      await logger.log('info', "file tree",fileTree);
+      await logger.log('info', 'File tree generated', { fileCount: files.length });
 
       // Get key file contents for better analysis
       const keyFileContents = await this.getKeyFileContents(repoPath, files);
 
       // Prepare the prompt for AI analysis
       const prompt = `Analyze this codebase and provide a JSON response.
-
-For the overview, focus on answering these questions:
-1. What is the main purpose of this project? (e.g., "This is a library management system for schools" or "This is a traffic light analysis tool for urban planning")
-2. What problem does it solve?
-3. Who are the intended users?
-4. What are its key features?
+Focus on creating an accurate dependency graph that shows how files are related.
 
 Files:
 ${fileTree}
 
-Content:
+Content of key files:
 ${keyFileContents}
+
+Create a dependency graph that shows:
+1. How files are connected (imports, requires, relationships)
+2. Group files by their directory/module
+3. Size nodes based on their importance/connectivity
+4. Include both direct and indirect dependencies
 
 Return this exact JSON structure:
 {
@@ -88,10 +210,27 @@ Return this exact JSON structure:
     "assetFiles": ["string"]
   },
   "summary": {
-    "overview": "Clear description of what the project does, its purpose, target users, and key features",
+    "overview": "Clear description of what the project does",
     "architecture": "core design patterns used",
     "testingApproach": "testing methods",
     "codeQuality": "code quality overview"
+  },
+  "dependencyGraph": {
+    "nodes": [
+      {
+        "id": "file path",
+        "name": "file name",
+        "group": "number (1-5) based on directory/module",
+        "radius": "number (10-30) based on importance"
+      }
+    ],
+    "links": [
+      {
+        "source": "file path that imports",
+        "target": "file path that is imported",
+        "value": "number (1-3) indicating relationship strength"
+      }
+    ]
   }
 }`;
 
@@ -101,7 +240,7 @@ Return this exact JSON structure:
         messages: [
           {
             role: "system",
-            content: "You are a code analyzer. Focus on explaining WHAT the project does in simple terms, as if explaining to a non-technical person. For the overview, start with 'This is a [type of project] that [main purpose]'. Be specific about the project's actual purpose."
+            content: "You are a code analyzer specialized in understanding project structure and dependencies. Focus on creating accurate dependency graphs that show how different parts of the codebase are connected. Group related files together and identify key relationships between modules."
           },
           {
             role: "user",
@@ -115,67 +254,81 @@ Return this exact JSON structure:
       // Parse and validate the AI response
       try {
         const content = response.choices[0].message?.content || "{}";
-        console.log('Raw AI response:', content); // Log the raw response
+        await logger.log('debug', 'Raw AI response', { content });
 
-        // Remove any non-JSON content (anything before { or after })
+        // Remove any non-JSON content
         const jsonStr = content.substring(
           content.indexOf('{'),
           content.lastIndexOf('}') + 1
         );
-        console.log('Extracted JSON string:', jsonStr); // Log the extracted JSON
+        await logger.log('debug', 'Extracted JSON string', { jsonStr });
 
         const analysis = JSON.parse(jsonStr);
-        console.log('Parsed analysis:', analysis); // Log the parsed object
+        await logger.log('info', 'Parsed analysis', { analysis });
         
-        // Check if summary is empty or missing
-        if (!analysis.summary || !analysis.summary.overview) {
-          console.warn('Summary is missing or empty in AI response. Retrying with modified prompt...');
+        // Check if graph data is missing or empty
+        if (!analysis.dependencyGraph || !analysis.dependencyGraph.nodes || !analysis.dependencyGraph.links) {
+          await logger.log('warn', 'Dependency graph is missing or empty in AI response. Retrying with focused prompt...');
           
-          // Retry with a more direct prompt for just the summary
-          const summaryResponse = await this.openai.chat.completions.create({
+          // Retry with a more focused prompt just for the graph
+          const graphResponse = await this.openai.chat.completions.create({
             model: "gpt-4.1-nano",
             messages: [
               {
                 role: "system",
-                content: "You are a code analyzer. Write a 200-word summary of this project based on its files and content."
+                content: "You are a dependency graph generator. Analyze the file structure and contents to create an accurate representation of file relationships and module dependencies."
               },
               {
                 role: "user",
-                content: `Write a 200-word summary of this project:
+                content: `Create a dependency graph for this codebase showing file relationships and module structure.
 
 Files:
 ${fileTree}
 
-Content:
+Key file contents:
 ${keyFileContents}
 
-Focus on: purpose, main features, technologies used, and architecture.`
+Return a JSON object with this structure:
+{
+  "nodes": [
+    {
+      "id": "file path",
+      "name": "file name",
+      "group": "number (1-5) based on directory/module",
+      "radius": "number (10-30) based on importance"
+    }
+  ],
+  "links": [
+    {
+      "source": "file path that imports",
+      "target": "file path that is imported",
+      "value": "number (1-3) indicating relationship strength"
+    }
+  ]
+}`
               }
             ],
-            temperature: 0.2
+            temperature: 0.2,
+            response_format: { type: "json_object" }
           });
 
-          // Update the analysis with the new summary
-          analysis.summary = {
-            overview: summaryResponse.choices[0].message?.content || "No overview available",
-            architecture: analysis.summary?.architecture || "Architecture information not available",
-            testingApproach: analysis.summary?.testingApproach || "Testing information not available",
-            codeQuality: analysis.summary?.codeQuality || "Code quality assessment not available"
-          };
+          // Update the analysis with the new graph data
+          analysis.dependencyGraph = JSON.parse(graphResponse.choices[0].message?.content || "{}");
         }
         
         // Validate and clean the analysis
         const validatedAnalysis = this.validateAnalysis(analysis);
-        console.log('Final validated analysis:', validatedAnalysis); // Log the final result
+        await logger.log('info', 'Final validated analysis', { validatedAnalysis });
         return validatedAnalysis;
       } catch (error) {
-        console.error('Error parsing AI response:', error);
-        console.error('Raw AI response:', response.choices[0].message?.content);
-        // Return default analysis if parsing fails
+        await logger.log('error', 'Error parsing AI response', { 
+          error,
+          rawResponse: response.choices[0].message?.content 
+        });
         return this.validateAnalysis({});
       }
     } catch (error) {
-      console.error('Error in FileSystemAgent analysis:', error);
+      await logger.log('error', 'Error in FileSystemAgent analysis', { error });
       throw error;
     }
   }
@@ -193,14 +346,16 @@ Focus on: purpose, main features, technologies used, and architecture.`
           
           // Skip large files
           if (stats.size > this.MAX_FILE_SIZE) {
+            await logger.log('warn', `File too large to analyze: ${relativePath}`, { size: stats.size });
             keyFileContents.push(`${relativePath}: [File too large to analyze]`);
             continue;
           }
 
           const content = await fs.readFile(file, 'utf-8');
+          await logger.log('info', 'File content', { content });
           keyFileContents.push(`${relativePath}:\n${content}\n`);
         } catch (error) {
-          console.error(`Error reading file ${file}:`, error);
+          await logger.log('error', `Error reading file ${file}`, { error });
         }
       }
     }
@@ -224,11 +379,34 @@ Focus on: purpose, main features, technologies used, and architecture.`
         architecture: "Architecture information not available",
         testingApproach: "Testing information not available",
         codeQuality: "Code quality assessment not available"
+      },
+      dependencyGraph: {
+        nodes: [],
+        links: []
       }
     };
 
+    // Validate and clean the dependency graph
+    const validateGraph = (graph: any) => {
+      if (!graph || typeof graph !== 'object') return defaultAnalysis.dependencyGraph;
+
+      return {
+        nodes: Array.isArray(graph.nodes) ? graph.nodes.map((node: any) => ({
+          id: String(node.id || ""),
+          name: String(node.name || ""),
+          group: Number(node.group) || 1,
+          radius: Number(node.radius) || 10
+        })) : [],
+        links: Array.isArray(graph.links) ? graph.links.map((link: any) => ({
+          source: String(link.source || ""),
+          target: String(link.target || ""),
+          value: Number(link.value) || 1
+        })) : []
+      };
+    };
+
     return {
-      mainFiles: Array.isArray(analysis.mainFiles) ? analysis.mainFiles.map((file: { path?: any; description?: any; confidence?: any }) => ({
+      mainFiles: Array.isArray(analysis.mainFiles) ? analysis.mainFiles.map((file: any) => ({
         path: String(file.path || ""),
         description: String(file.description || ""),
         confidence: Number(file.confidence) || 0
@@ -253,7 +431,8 @@ Focus on: purpose, main features, technologies used, and architecture.`
         architecture: String(analysis.summary?.architecture || defaultAnalysis.summary.architecture),
         testingApproach: String(analysis.summary?.testingApproach || defaultAnalysis.summary.testingApproach),
         codeQuality: String(analysis.summary?.codeQuality || defaultAnalysis.summary.codeQuality)
-      }
+      },
+      dependencyGraph: validateGraph(analysis.dependencyGraph)
     };
   }
 } 

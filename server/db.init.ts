@@ -42,6 +42,17 @@ async function initializeDatabase() {
       )
     `);
     
+    // Create graph_data table
+    await query(`
+      CREATE TABLE IF NOT EXISTS graph_data (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES projects(id) NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
     // Create sessions table for connect-pg-simple
     await query(`
       CREATE TABLE IF NOT EXISTS "session" (

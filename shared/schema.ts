@@ -97,3 +97,34 @@ export const insertDocumentSchema = createInsertSchema(documents).pick({
 
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
+
+// Graph data schema
+export interface GraphData {
+  nodes: Array<{
+    id: string;
+    name: string;
+    group: number;
+    radius: number;
+  }>;
+  links: Array<{
+    source: string;
+    target: string;
+    value: number;
+  }>;
+}
+
+export const graphData = pgTable("graph_data", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id).notNull(),
+  data: jsonb("data").notNull().$type<GraphData>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const insertGraphDataSchema = createInsertSchema(graphData).pick({
+  projectId: true,
+  data: true
+});
+
+export type InsertGraphData = z.infer<typeof insertGraphDataSchema>;
+export type GraphDataRecord = typeof graphData.$inferSelect;

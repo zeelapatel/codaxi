@@ -5,6 +5,7 @@ import * as path from 'path';
 import { ProjectStats, ProjectSummary } from '@shared/schema';
 import { fdir } from "fdir";
 import { FileSystemAgent } from './file-system-agent';
+import { logger } from './logging-service';
 
 const execAsync = promisify(exec);
 
@@ -23,6 +24,19 @@ interface ProjectAnalysis {
     assetFiles: string[];
   };
   summary: ProjectSummary;
+  dependencyGraph: {
+    nodes: Array<{
+      id: string;
+      name: string;
+      group: number;
+      radius: number;
+    }>;
+    links: Array<{
+      source: string;
+      target: string;
+      value: number;
+    }>;
+  };
 }
 
 export class RepositoryAnalyzer {
@@ -57,16 +71,17 @@ export class RepositoryAnalyzer {
     const repoPath = path.join(this.tempDir, Date.now().toString(), repoName);
 
     try {
-      console.log('Starting repository analysis...');
+      await logger.startNewAnalysisLog(repositoryUrl);
+      await logger.log('info', 'Starting repository analysis...');
 
       await fs.mkdir(path.dirname(repoPath), { recursive: true });
 
       // Use authenticated URL if access token is provided
       const cloneUrl = accessToken ? this.getAuthenticatedUrl(repositoryUrl, accessToken) : repositoryUrl;
-      console.log('Cloning repository:', repositoryUrl.replace(accessToken || '', '[TOKEN]')); // Log URL without exposing token
+      await logger.log('info', 'Cloning repository:', { url: repositoryUrl.replace(accessToken || '', '[TOKEN]') });
 
       const cloneResult = await execAsync(`git clone --depth 1 --branch ${branch} "${cloneUrl}" "${repoPath}"`);
-      console.log('Clone completed:', cloneResult.stdout);
+      await logger.log('info', 'Clone completed', { output: cloneResult.stdout });
 
       // Use FileSystemAgent for intelligent file analysis
       const aiAnalysis = await this.fileSystemAgent.analyzeFileStructure(repoPath);
@@ -77,7 +92,7 @@ export class RepositoryAnalyzer {
       await fs.rm(repoPath, { recursive: true, force: true });
 
       // Log the AI analysis before returning
-      console.log('AI Analysis result:', JSON.stringify(aiAnalysis, null, 2));
+      await logger.log('info', 'AI Analysis result', { analysis: aiAnalysis });
 
       // Ensure summary has all required fields
       const summary: ProjectSummary = {
@@ -87,7 +102,7 @@ export class RepositoryAnalyzer {
         codeQuality: aiAnalysis.summary?.codeQuality || 'Code quality assessment not available'
       };
 
-      console.log('Formatted summary:', JSON.stringify(summary, null, 2));
+      await logger.log('info', 'Formatted summary', { summary });
 
       return {
         ...stats,
@@ -96,10 +111,11 @@ export class RepositoryAnalyzer {
         analysisDate: new Date(),
         projectType: aiAnalysis.projectType,
         suggestedStructure: aiAnalysis.suggestedStructure,
-        summary
+        summary,
+        dependencyGraph: aiAnalysis.dependencyGraph
       };
     } catch (error) {
-      console.error('Error during analysis:', error);
+      await logger.log('error', 'Error during analysis', { error });
       await fs.rm(repoPath, { recursive: true, force: true }).catch(() => {});
       throw error;
     }
@@ -221,7 +237,7 @@ export class RepositoryAnalyzer {
       return content.split('\n').length;
     }
 
-    console.log('Starting directory processing...');
+    await logger.log('info', 'Starting directory processing...');
     
     // Create a new fdir instance with exclusion patterns
     const crawler = new fdir()
@@ -261,7 +277,7 @@ export class RepositoryAnalyzer {
       }
     }));
 
-    console.log('Final statistics:', JSON.stringify(stats, null, 2));
+    await logger.log('info', 'Final statistics', { stats });
     return stats;
   }
 }
